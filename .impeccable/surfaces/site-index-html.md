@@ -11,22 +11,20 @@ Modo: Persuade. Quem age: dev em Mac que usa Claude Code ou Codex todo dia e bat
 
 Restrições: pt-BR, sem travessão, sem emoji, copy curta; nome uma vez por tela; sem bastidor técnico; dizer que não é afiliada a Anthropic, OpenAI, Google ou xAI; dizer os limites (só Mac Apple Silicon, interface em português, partes só no Claude e no Codex).
 
-Direção fixada pelo usuário em 2026-10-18: "usa a ararahq como ex", ou seja, o sistema Plumagem do ararahq.com (tokens e componentes do protótipo em ~/git/arara/prototypes/lp-ticket-alto/site). As versões anteriores (bando em canvas com céu do dia à noite; página de app do Mac com janela recriada) foram recusadas.
+Direção fixada pelo usuário em 2026-11-11: refazer a página com o tema e a vertente do app novo (Grafite escuro, Newsreader nos títulos, Geist no texto, Geist Mono nos detalhes, cinza e um botão cheio). Substitui a direção de 2026-10-18 (sistema Plumagem do ararahq.com), que por sua vez substituiu as duas versões recusadas antes dela.
 
-Fotos: geradas para a página (revoada de estorninhos na capa e no fecho, fila de gansos na prova), com a origem gravada nos arquivos.
-
-Em aberto: domínio e host do deploy; og:image depende do endereço final.
+Imagens: prints reais do app, tirados do modo de demonstração (`scripts/demo.ts`, agentes de mentira em `scripts/demo-agentes.ts`), em `site/img/`. Sem foto e sem ilustração.
 
 ## Direction contract
 
-THESIS: A página da Revoada como irmã do ararahq.com, no sistema Plumagem: foto do bando na capa presa, letra monumental, folha de papel que sobe por cima e conversa transcrita em fita no lugar de tela desenhada. Recusa a landing de ferramenta de IA com print do app em moldura, grade de cartões e gradiente.
+THESIS: A página é a mesma sala do app vista de fora: Grafite, serifa nos títulos e o produto mostrado em print real, bloco a bloco. Recusa gradiente, brilho, grade de cartões com ícone e tela recriada.
 
-OWN-WORLD: Plumagem da AraraHQ: noite quase preta e papel quase branco, tinta com cinzas esverdeados, teal escuro e menta como acento, Geist 600 com tracking apertado em títulos enormes, fio fino de um pixel, pílula branca sobre a foto e placa teal sobre o papel, grão gerado na hora sobre as fotos. As fotos são de bando: estorninhos em revoada na capa e no fecho, gansos em fila na prancha de confiança.
+OWN-WORLD: os tokens do `:root` de `public/index.html` (fundo #111112, lateral #0c0c0d, tinta #ededee, fio branco a 7,5% e 14%), Newsreader 400, Geist, Geist Mono, fio de um pixel, pílula clara como único elemento cheio, moldura de janela com três pontos cinza.
 
-STORY: Em cinco segundos: continuar a conversa quando a conta bate no limite, com Claude Code, Codex, Gemini CLI e Grok num app de Mac. Depois o antes e depois do limite em duas fitas de exemplo com a ação no meio, dois capítulos (tarefa grande, madrugada), a prancha que responde ao medo do token, o que os agentes fazem, as dúvidas que viram objeção e a instalação em quatro comandos.
+STORY: vários agentes de código numa sala só, com as contas que a pessoa já paga. Depois: a conta bate no limite e a conversa continua; o que precisa de você num lugar só; uma tarefa por linha; rotinas; nenhum token passa pelo app; o que mais vem junto; perguntas; instalar em quatro comandos.
 
-FIRST VIEWPORT: Capa em tela cheia com a foto do bando; "Continue a conversa" ocupando a largura; "quando uma conta bate no limite." passando por outras situações e voltando; embaixo, o texto com os quatro CLIs e o resultado à esquerda e, à direita, "Instalar em 4 comandos" em pílula branca, "Ver no GitHub" sublinhado e a nota de licença, plataforma e login.
+FIRST VIEWPORT: "Seus agentes de código, numa sala só." em Newsreader, apoio à esquerda, "Instalar em 4 comandos" à direita e o topo da janela com a conversa do rodízio.
 
-FORM: Plumagem do ararahq.com, fixada pelo usuário em 2026-10-18, no lugar da rodada sorteada; assinatura: a capa presa que a folha cobre, a frase que gira e a conversa que toca linha a linha quando o capítulo chega; seed bce0e759.
+FORM: título à esquerda e texto à direita em todo bloco, print na largura inteira; assinatura: a moldura de janela com o print real.
 
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+FINISH: conferida em 360, 390, 768, 1440 e 1800; DESIGN.md reescrito em 2026-11-11.

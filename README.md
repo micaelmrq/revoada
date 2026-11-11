@@ -23,10 +23,12 @@ Um app para macOS que junta as suas contas de agentes de código (Claude Code, C
 - **Plano em arquivo.** Em tarefa longa, o agente mantém um plano em markdown, marca os passos e continua dele se a conversa for cortada ou trocar de conta.
 - **Sugestão do próximo pedido.** Quando o agente termina, o campo oferece a próxima mensagem provável: Tab aceita, Enter envia.
 - **Busca no conteúdo.** A busca da lateral procura no que foi dito dentro das conversas, as daqui e as que o Claude Code e o Codex já guardaram na máquina.
+- **Precisa de você.** Uma lista só com tudo o que os agentes esperam de você, de todas as conversas: permissão pendente, plano do supervisor para aprovar, tarefa pronta para revisar. Dá para responder dali mesmo.
+- **Salas, projetos e bots na lateral.** As conversas recentes ficam em Salas, agrupadas por pasta em Projetos, e cada conta aparece em Bots com o uso do limite. A cópia de trabalho de um agente conta para o repositório de onde saiu. O botão direito numa sala fixa no topo, renomeia, arquiva ou apaga.
 
 ### Vários agentes ao mesmo tempo
 
-- **Quadro de tarefas.** Despeje as tarefas, uma por linha, e cada cartão vira um agente numa cópia própria do repositório. O cartão vai sozinho para "Revisar" quando o agente termina.
+- **Tarefas.** Despeje as tarefas, uma por linha, e cada cartão vira um agente numa cópia própria do repositório. O cartão vai sozinho para "Revisar" quando o agente termina.
 - **Supervisor.** Você descreve um trabalho grande, um agente divide em tarefas, você aprova o plano, cada tarefa roda em paralelo e no fim um agente junta os branches.
 - **Cópia isolada por tarefa.** Cada tarefa paralela roda num `git worktree` próprio, que some sozinho quando o trabalho vira PR. A Revoada também acha e limpa os clones que os agentes deixam para trás.
 - **Revisão cruzada.** Uma conta de outro provedor lê o que o agente mudou, sem poder editar, e aponta defeitos na própria conversa. Um botão manda os achados de volta para o autor corrigir.
@@ -34,7 +36,7 @@ Um app para macOS que junta as suas contas de agentes de código (Claude Code, C
 
 ### Sem ficar olhando
 
-- **Pedidos agendados.** "Roda isso às 3h" ou "toda segunda às 9h": na hora marcada vira uma conversa nova.
+- **Rotinas.** "Roda isso às 3h" ou "toda segunda às 9h": na hora marcada vira uma conversa nova.
 - **Aviso sonoro.** Um som quando um agente termina um trabalho demorado e outro quando ele precisa de você.
 - **Barra de menus.** O que está rodando, os limites e um campo de pedido rápido (`⌃⌥Espaço`).
 - **Acompanhar pelo celular.** Uma página leve, em outro aparelho da sua rede, para ver o que está rodando, permitir ou negar um pedido e parar um agente. Desligada por padrão.
@@ -213,10 +215,10 @@ A Revoada é um servidor local em Bun com uma página, embrulhado numa janela na
 
 ### Trabalho em paralelo
 
-- **Quadro.** Cada cartão começado é uma conversa comum numa cópia isolada. Quando o agente termina, o cartão vai para "Revisar"; se ele mexeu em arquivo, outra conta revisa antes. Só você move para "Feito".
+- **Tarefas.** Cada cartão começado é uma conversa comum numa cópia isolada. Quando o agente termina, o cartão vai para "Revisar"; se ele mexeu em arquivo, outra conta revisa antes. Só você move para "Feito".
 - **Supervisor.** O planejador roda em modo só leitura e devolve as tarefas num bloco JSON; nada é executado antes de você aprovar. São no máximo cinco tarefas por pedido. "Juntar os branches" abre mais uma conversa, numa cópia nova, que faz o merge de cada branch e roda os testes.
 - **Revisão cruzada.** O revisor recebe o seu pedido e o diff (numa cópia isolada, tudo desde que ela se separou da principal; arquivo novo fora do git entra inteiro) e roda em modo só leitura, numa sessão própria. A escolha é outro provedor primeiro, porque outro modelo erra em lugares diferentes; sem outro pronto, outra conta do mesmo.
-- **Pedidos agendados.** O relógio só anda com a Revoada aberta e o Mac acordado. Hora perdida por até 6 horas roda quando o Mac volta; perdida por mais que isso é pulada e fica anotada. Pedido agendado no modo "Pergunta antes" roda como "Pode editar", porque não há ninguém para responder.
+- **Rotinas.** O relógio só anda com a Revoada aberta e o Mac acordado. Hora perdida por até 6 horas roda quando o Mac volta; perdida por mais que isso é pulada e fica anotada. Pedido agendado no modo "Pergunta antes" roda como "Pode editar", porque não há ninguém para responder.
 
 ### Memória e ferramentas
 
@@ -231,7 +233,9 @@ A Revoada é um servidor local em Bun com uma página, embrulhado numa janela na
 bun run demo
 ```
 
-Sobe o painel em `http://127.0.0.1:4790` com conversas de exemplo (uma resposta longa e formatada, uma parada pedindo permissão, uma revisada por outra conta), numa pasta de usuário descartável e com os agentes de mentira dos testes. Não gasta conta nem toca nos seus dados. Edite `public/` e recarregue a página; `Ctrl+C` encerra e apaga tudo.
+Sobe o painel em `http://127.0.0.1:4790` com um dia de trabalho de exemplo (uma conversa que troca de conta no limite, um pedido de permissão, tarefas, rotinas e um plano do supervisor), numa pasta de usuário descartável e com agentes de mentira (`scripts/demo-agentes.ts`). Não gasta conta nem toca nos seus dados. Edite `public/` e recarregue a página; `Ctrl+C` encerra e apaga tudo.
+
+Depois de mexer em `public/index.html` ou nas cenas de `scripts/demo-cenas.ts`, rode `bun scripts/site-demo.ts` para refazer a demonstração que o site mostra (`site/demo/`); `bun test` falha se ela ficar para trás.
 
 ### Testes
 
@@ -279,7 +283,7 @@ Sem `SIGN_ID`, o zip abre em outro Mac por clique direito > Abrir.
 
 ## Créditos
 
-Dependências: [xterm.js](https://xtermjs.org) (terminal embutido, MIT), [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (QR do pareamento, MIT) e a tipografia Geist (SIL Open Font License), carregada do Google Fonts.
+Dependências: [xterm.js](https://xtermjs.org) (terminal embutido, MIT), [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (QR do pareamento, MIT) e as tipografias Geist, Geist Mono e Newsreader (SIL Open Font License), servidas pelo próprio app a partir de `public/`. As licenças das três fontes (SIL Open Font License 1.1) estão em `licencas-fontes/`.
 
 Ideias que vieram de outros projetos, sem usar código de nenhum deles:
 
