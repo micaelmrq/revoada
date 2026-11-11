@@ -557,10 +557,12 @@ describe.skipIf(!CHROME)("tela", () => {
 
     // Bots: uma linha por conta, com a barra de uso ou "Entrar"; clicar leva a Contas com a conta em foco
     const bots = await page(`return [...document.querySelectorAll("#bots .item.botl")].map((b) => [b.dataset.acc, b.querySelector(".t").textContent, b.querySelector(".tag").textContent, !!b.querySelector("svg.logo"), b.querySelector(".entrar") ? "Entrar" : b.querySelector(".uso-m") ? "uso" : ""]);`);
-    const accounts = (await env.api("state")).accounts;
-    expect(bots.map((b: string[]) => b[0])).toEqual(accounts.map((a: any) => a.id));
+    // só entra em Bots a conta de provedor instalado na máquina (no CI, sem o Gemini e o Grok, elas ficam de fora)
+    const estado = await env.api("state"), accounts = estado.accounts;
+    const instalados = new Set(estado.providers.filter((p: any) => p.installed).map((p: any) => p.id));
+    expect(bots.map((b: string[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider)).map((a: any) => a.id));
     expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", accounts.find((a: any) => a.id === "claude-padrao").label, true, "uso"]);
-    expect(bots.filter((b: any[]) => b[4] === "Entrar").map((b: any[]) => b[0])).toEqual(accounts.filter((a: any) => !a.status.ok).map((a: any) => a.id));
+    expect(bots.filter((b: any[]) => b[4] === "Entrar").map((b: any[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider) && !a.status.ok).map((a: any) => a.id));
     await page(`document.querySelector('#bots [data-acc="claude-padrao"]').click();`);
     await until(`document.querySelector('#accList .conta.foco')`);
     expect(await page(`return [view.type, view.focus, document.querySelector("#accList .conta.foco").dataset.conta, document.querySelector('#bots [data-acc="claude-padrao"]').classList.contains("on"), !!document.querySelector("#accList .conta.foco .uso .trilha"), [...document.querySelectorAll("#accList .prov-cab b")].map((b) => b.textContent)]`))
