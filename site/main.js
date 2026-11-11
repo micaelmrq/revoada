@@ -1,254 +1,270 @@
-// Página da Revoada, na linguagem da plumagem da AraraHQ: capa presa com a foto do bando, folha de papel que sobe por
-// cima, capítulos com a conversa transcrita, a prancha de confiança e o fecho com os comandos de instalar.
+// Página da Revoada: copiar os comandos de instalar, a demonstração (o app vivo dentro da janela) e o passeio (a janela presa que troca de tela com a rolagem).
 (() => {
   'use strict';
-
-  const raiz = document.documentElement;
-  const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const el = (id) => document.getElementById(id);
-  const lim = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  // Cada visita abre do topo; só uma âncora no endereço leva a outro ponto. Sai de cena no primeiro toque ou rolagem.
-  if (!location.hash) {
-    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    const ate = performance.now() + 1200;
-    let mexeu = false;
-    const proTopo = () => { if (!mexeu && performance.now() < ate && scrollY > 0) scrollTo({ top: 0, left: 0, behavior: 'instant' }); };
-    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((tipo) => addEventListener(tipo, () => { mexeu = true; }, { once: true, passive: true }));
-    scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    ['scroll', 'pageshow', 'load'].forEach((tipo) => addEventListener(tipo, proTopo, { passive: true }));
-  }
-
-  // Grão: um ladrilho de ruído gerado na hora, parado
-  (() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const x = c.getContext('2d');
-    if (!x) return;
-    const d = x.createImageData(256, 256);
-    for (let i = 0; i < d.data.length; i += 4) {
-      const v = Math.random() * 255;
-      d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
-      d.data[i + 3] = Math.random() * 30;
-    }
-    x.putImageData(d, 0, 0);
-    raiz.style.setProperty('--grao', `url(${c.toDataURL()})`);
-  })();
-
-  // ---------- capa ----------
-
-  const capa = el('topo');
-  const meio = el('capa-meio');
-  const fotoCapa = el('foto-capa');
-  const nav = el('nav');
-  const titulo = document.querySelector('.titulo');
-  const quem = el('quem');
-
-  // a letra ocupa a largura inteira; em tela de pé, vira duas linhas
-  function ajustarTitulo() {
-    if (!titulo || !innerWidth || !innerHeight) return;
-    const duas = innerWidth / innerHeight < 1.15;
-    titulo.classList.toggle('duas', duas);
-    titulo.style.fontSize = '100px';
-    const linhas = [...titulo.querySelectorAll('.ln > span')].map((s) => s.getBoundingClientRect().width);
-    const largura = duas ? Math.max(...linhas) : linhas[0] + linhas[1] + 22;
-    const cabe = ((meio.clientWidth - parseFloat(getComputedStyle(meio).paddingLeft) * 2) / largura) * 100;
-    if (!(cabe > 0) || !isFinite(cabe)) { titulo.style.fontSize = ''; return; }
-    titulo.style.fontSize = Math.min(cabe, innerHeight * (duas ? 0.2 : 0.28)).toFixed(1) + 'px';
-  }
-
-  // a linha de baixo passa pelas situações em que a conversa segue e para na primeira, a mesma do primeiro capítulo
-  const FRASES = ['uma conta bate no limite.', 'a janela de cinco horas acaba.', 'você troca de agente no meio.'];
-  async function girar() {
-    if (!quem || calmo) return;
-    await espera(2400);
-    for (let trocas = 1; trocas <= FRASES.length; trocas++) {
-      await espera(2600);
-      if (capa.classList.contains('fora') || document.hidden) { trocas--; continue; }
-      await quem.animate(
-        [{ opacity: 1, transform: 'none', filter: 'blur(0)' }, { opacity: 0, transform: 'translateY(-.25em)', filter: 'blur(8px)' }],
-        { duration: 240, easing: 'ease-in', fill: 'forwards' },
-      ).finished;
-      quem.textContent = FRASES[trocas % FRASES.length];
-      quem.animate(
-        [{ opacity: 0, transform: 'translateY(.3em)', filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }],
-        { duration: 520, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' },
-      );
-    }
-  }
-
-  // ponteiro: a foto e o título se deslocam um pouco em sentidos opostos
-  const ponteiro = { x: 0.5, y: 0.5 };
-  let fx = 0, fy = 0, quadroVivo = false;
-  function quadro() {
-    const ax = -(ponteiro.x - 0.5) * 26, ay = -(ponteiro.y - 0.5) * 18;
-    if (capa.classList.contains('fora') || (Math.abs(ax - fx) < 0.02 && Math.abs(ay - fy) < 0.02)) { quadroVivo = false; return; }
-    fx += (ax - fx) * 0.05;
-    fy += (ay - fy) * 0.05;
-    fotoCapa.style.setProperty('--bx', fx.toFixed(2));
-    fotoCapa.style.setProperty('--by', fy.toFixed(2));
-    meio.style.setProperty('--fx', (-fx * 0.16).toFixed(2));
-    meio.style.setProperty('--fy', (-fy * 0.16).toFixed(2));
-    requestAnimationFrame(quadro);
-  }
-  addEventListener('pointermove', (e) => {
-    ponteiro.x = e.clientX / innerWidth;
-    ponteiro.y = e.clientY / innerHeight;
-    if (!calmo && !quadroVivo) { quadroVivo = true; requestAnimationFrame(quadro); }
-  }, { passive: true });
-
-  // rolagem: a capa escurece e recua enquanto a folha sobe; as outras pranchas deslizam devagar; a barra vira papel
-  const pranchas = [...document.querySelectorAll('.prancha .foto')];
-  let rolando = false;
-  function aoRolar() {
-    if (rolando) return;
-    rolando = true;
-    requestAnimationFrame(() => {
-      rolando = false;
-      const y = scrollY, h = capa.offsetHeight, tela = innerHeight;
-      if (!h || !tela) return;
-      capa.style.setProperty('--p', lim(y / h).toFixed(3));
-      capa.classList.toggle('fora', y > h * 1.05);
-      nav.classList.toggle('papel', y > h - 76);
-      if (calmo) return;
-      for (const f of pranchas) {
-        const r = f.parentElement.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > tela) continue;
-        f.style.setProperty('--y', ((r.top + r.height / 2 - tela / 2) * -0.07).toFixed(1));
-      }
-    });
-  }
-  addEventListener('scroll', aoRolar, { passive: true });
-
-  // ---------- capítulos: a conversa toca quando chega na tela ----------
-
-  const caps = document.querySelectorAll('.cap');
-  if (!calmo && 'IntersectionObserver' in window) {
-    const io = new IntersectionObserver((itens) => itens.forEach((i) => {
-      if (i.isIntersecting) { i.target.classList.add('dentro'); io.unobserve(i.target); }
-    }), { threshold: 0.18, rootMargin: '0px 0px -6% 0px' });
-    caps.forEach((c) => io.observe(c));
-  } else caps.forEach((c) => c.classList.add('dentro'));
-
-  // ---------- perguntas: abrir uma fecha a outra; cada linha responde quando o ponteiro passa perto ----------
-
-  const lista = document.querySelector('.perguntas');
-  if (lista) {
-    const itens = [...lista.querySelectorAll('details')];
-    const fechar = (d) => { if (!d.classList.contains('aberta')) return; d.classList.remove('aberta'); if (calmo) d.open = false; };
-    const abrir = (d) => { itens.forEach((outra) => { if (outra !== d) fechar(outra); }); d.open = true; void d.offsetWidth; d.classList.add('aberta'); };
-    itens.forEach((d) => {
-      const pergunta = d.querySelector('summary');
-      const resposta = document.createElement('div');
-      const dentro = document.createElement('div');
-      const texto = document.createElement('span');
-      texto.className = 'txt';
-      while (pergunta.firstChild && pergunta.firstChild.nodeType === 3) texto.append(pergunta.firstChild);
-      pergunta.prepend(texto);
-      resposta.className = 'resposta';
-      resposta.append(dentro);
-      while (pergunta.nextSibling) dentro.append(pergunta.nextSibling);
-      d.append(resposta);
-      pergunta.addEventListener('click', (e) => { e.preventDefault(); d.classList.contains('aberta') ? fechar(d) : abrir(d); });
-      resposta.addEventListener('transitionend', (e) => {
-        if (e.target === resposta && e.propertyName === 'grid-template-rows' && !d.classList.contains('aberta')) d.open = false;
-      });
-      d.addEventListener('toggle', () => { if (d.open && !d.classList.contains('aberta')) abrir(d); });
-    });
-
-    if (!calmo && matchMedia('(hover: hover) and (pointer: fine)').matches) {
-      const linhas = itens.map((d) => [d, d.querySelector('summary')]);
-      let px = -9999, py = -9999, pedido = false;
-      const medir = () => {
-        pedido = false;
-        for (const [d, pergunta] of linhas) {
-          const r = pergunta.getBoundingClientRect();
-          const dy = py - (r.top + r.height / 2);
-          const dx = px < r.left ? r.left - px : px > r.right ? px - r.right : 0;
-          const perto = Math.exp(-(dy * dy) / 4232) * Math.exp(-(dx * dx) / 39200);
-          d.style.setProperty('--perto', perto < 0.02 ? 0 : perto.toFixed(3));
-        }
-      };
-      const pedir = () => { if (!pedido) { pedido = true; requestAnimationFrame(medir); } };
-      addEventListener('pointermove', (e) => { if (e.pointerType && e.pointerType !== 'mouse') return; px = e.clientX; py = e.clientY; pedir(); }, { passive: true });
-      addEventListener('scroll', pedir, { passive: true });
-      raiz.addEventListener('pointerleave', () => { px = py = -9999; pedir(); });
-    }
-  }
-
-  // ---------- os dois sons do app, feitos na hora como lá ----------
-
-  (() => {
-    let audio = null;
-    const SOM = { done: [[659.25, 0, 0.5], [987.77, 0.11, 0.7]], ask: [[880, 0, 0.16], [880, 0.24, 0.16], [1174.66, 0.48, 0.3]] };
-    const toca = (notas) => {
-      try {
-        audio ||= new (window.AudioContext || window.webkitAudioContext)();
-        if (audio.state === 'suspended') audio.resume();
-        const t0 = audio.currentTime + 0.02;
-        notas.forEach(([freq, at, dur]) => {
-          const osc = audio.createOscillator(), ganho = audio.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          ganho.gain.setValueAtTime(0, t0 + at);
-          ganho.gain.linearRampToValueAtTime(0.14, t0 + at + 0.015);
-          ganho.gain.exponentialRampToValueAtTime(0.0008, t0 + at + dur);
-          osc.connect(ganho).connect(audio.destination);
-          osc.start(t0 + at);
-          osc.stop(t0 + at + dur + 0.05);
-        });
-      } catch { /* sem áudio, sem som */ }
-    };
-    document.querySelectorAll('[data-som]').forEach((b) => b.addEventListener('click', () => {
-      toca(SOM[b.dataset.som]);
-      b.classList.add('tocando');
-      setTimeout(() => b.classList.remove('tocando'), 900);
-    }));
-  })();
-
-  // ---------- copiar os comandos de instalar ----------
-
-  (() => {
-    const b = document.querySelector('[data-copiar]');
-    const pre = document.querySelector('[data-comandos]');
-    const rotulo = b && b.querySelector('[data-copiar-texto]');
-    if (!b || !pre || !rotulo) return;
-    let volta = 0;
-    b.addEventListener('click', async () => {
-      const texto = [...pre.querySelectorAll('code > span')].map((l) => l.textContent).join('\n') + '\n';
-      let ok = true;
-      try { await navigator.clipboard.writeText(texto); } catch {
-        ok = false;
-        const r = document.createRange();
-        r.selectNodeContents(pre);
-        const sel = getSelection();
-        sel.removeAllRanges();
-        sel.addRange(r);
-      }
-      rotulo.textContent = ok ? 'Copiado' : 'Selecionado, use ⌘C';
-      b.classList.toggle('feito', ok);
-      clearTimeout(volta);
-      volta = setTimeout(() => { rotulo.textContent = 'Copiar'; b.classList.remove('feito'); }, 2000);
-    });
-  })();
-
-  // ---------- começo ----------
-
-  let espelho;
-  const reajustar = () => { ajustarTitulo(); aoRolar(); };
-  const pedirReajuste = () => { clearTimeout(espelho); espelho = setTimeout(reajustar, 80); };
-  addEventListener('resize', pedirReajuste);
-  if ('ResizeObserver' in window) new ResizeObserver(pedirReajuste).observe(capa);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) reajustar(); });
-  const comecar = () => {
-    reajustar();
-    setTimeout(() => {
-      capa.classList.add('entrou');
-      girar();
-      setTimeout(() => capa.classList.add('pronta'), 2000);
-    }, 40);
+  const botao = document.querySelector('[data-copiar]');
+  const bloco = document.querySelector('[data-comandos]');
+  const rotulo = document.querySelector('[data-copiar-texto]');
+  if (!botao || !bloco || !rotulo) return;
+  const original = rotulo.textContent;
+  let volta = 0;
+  const diz = (texto) => {
+    rotulo.textContent = texto;
+    clearTimeout(volta);
+    volta = setTimeout(() => { rotulo.textContent = original; }, 2400);
   };
-  if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, espera(1500)]).then(comecar);
-  else comecar();
+  // área de transferência sem permissão (página fora de https, navegador antigo): seleciona os comandos pra copiar na mão
+  const seleciona = () => {
+    const faixa = document.createRange();
+    faixa.selectNodeContents(bloco);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(faixa);
+    diz('Selecionado, agora ⌘C');
+  };
+  botao.addEventListener('click', () => {
+    const texto = [...bloco.querySelectorAll('span')].map((s) => s.textContent).join('\n');
+    if (!navigator.clipboard) return seleciona();
+    navigator.clipboard.writeText(texto).then(() => diz('Copiado'), seleciona);
+  });
+})();
+
+// A demonstração: no palco do passeio, no lugar dos prints, entra o app de verdade rodando num iframe (site/demo/, gerado por
+// scripts/site-demo.ts), com um servidor de mentira dentro dele. Só carrega quando o passeio chega perto da tela, e nunca em tela
+// pequena nem com movimento reduzido: aí ficam os prints. A cena que a rolagem escolhe vai para o app por postMessage.
+(() => {
+  'use strict';
+  const secao = document.querySelector('[data-passeio]');
+  if (!secao || !('IntersectionObserver' in window) || !('ResizeObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const LARGURA = 1100; // o app é de computador: abaixo disso ele é desenhado nessa largura e encolhido para caber na janela
+  let perto = false, quadro = null, pronto = false, cena = '', espera = 0;
+  const manda = (m) => { if (pronto && quadro && quadro.contentWindow) quadro.contentWindow.postMessage(m, location.origin); };
+  const toca = () => { clearTimeout(espera); espera = setTimeout(() => { if (cena) manda({ revoada: 'cena', cena }); }, 260); };
+  const mede = new ResizeObserver(([e]) => {
+    const { width, height } = e.contentRect, base = Math.max(LARGURA, width), k = width / base;
+    if (!quadro || !width) return;
+    quadro.style.width = base + 'px'; quadro.style.height = Math.round(height / k) + 'px'; quadro.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+  });
+  const monta = () => {
+    const janela = document.querySelector('[data-palco]');
+    if (!perto || !janela || janela.querySelector('iframe')) return;
+    const telas = janela.querySelector('.passeio-telas'), nav = janela.parentNode.querySelector('.passeio-nav');
+    pronto = false;
+    quadro = document.createElement('iframe');
+    quadro.title = 'Demonstração do Revoada, com agentes de mentira e dados de exemplo';
+    quadro.src = 'demo/#parado';
+    telas.append(quadro);
+    mede.disconnect(); mede.observe(telas);
+    const nota = document.createElement('small'); nota.className = 'passeio-demo'; nota.hidden = true;
+    nota.innerHTML = 'Demonstração com agentes de mentira. Pode mexer. <button type="button">Ver de novo</button>';
+    nota.querySelector('button').addEventListener('click', toca);
+    nav.append(nota);
+  };
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !quadro || e.source !== quadro.contentWindow || !e.data || typeof e.data !== 'object') return;
+    if (e.data.revoada === 'pronto') {
+      pronto = true;
+      const janela = quadro.closest('[data-palco]');
+      janela.classList.add('viva');
+      janela.parentNode.querySelector('.passeio-demo').hidden = false;
+      toca();
+    }
+  });
+  // a página só manda cena quando a rolagem troca de ideia: se o visitante mexeu no app, ele fica como está até lá (ou até o Ver de novo)
+  document.addEventListener('revoada:cena', (e) => { cena = e.detail.cena; monta(); toca(); });
+  // a capa pinta primeiro: o iframe só entra na fila depois de a página carregar, a capa aparecer na tela e o navegador ficar ocioso, e com o passeio perto da tela
+  const vigia = () => new IntersectionObserver((es, o) => { if (!es.some((x) => x.isIntersecting)) return; o.disconnect(); perto = true; monta(); }, { rootMargin: '60% 0px' }).observe(secao);
+  const ocioso = () => ('requestIdleCallback' in window ? requestIdleCallback(vigia, { timeout: 2500 }) : setTimeout(vigia, 900));
+  const pintou = () => performance.getEntriesByName('first-contentful-paint').length > 0;
+  const carregou = () => {
+    if (pintou()) return ocioso();
+    try { new PerformanceObserver((l, o) => { if (pintou()) { o.disconnect(); ocioso(); } }).observe({ type: 'paint', buffered: true }); } catch { setTimeout(ocioso, 600); }
+  };
+  if (document.readyState === 'complete') carregou(); else addEventListener('load', carregou, { once: true });
+})();
+
+// O passeio. Em tela larga as ideias dividem uma janela só, presa na tela: a rolagem escolhe a ideia, o texto e a tela trocam
+// juntos, e os nomes embaixo levam direto a cada uma. Em tela pequena fica como está no HTML, uma embaixo da outra.
+(() => {
+  'use strict';
+  const secao = document.querySelector('[data-passeio]');
+  if (!secao) return;
+  const passos = [...secao.querySelectorAll('.passo')];
+  const larga = matchMedia('(min-width: 1000px) and (min-height: 620px)');
+  let palco = null, atual = -1, quadro = 0;
+  const pecas = passos.map((p) => ({ passo: p, texto: p.querySelector('.passo-texto'), figura: p.querySelector('.janela'), tela: p.querySelector('picture'), cena: p.dataset.cena, rotulo: p.dataset.rotulo }));
+
+  const mostra = (i) => {
+    if (i === atual || !palco) return;
+    atual = i;
+    pecas.forEach((x, n) => { x.texto.classList.toggle('on', n === i); x.tela.classList.toggle('on', n === i); x.botao.setAttribute('aria-current', String(n === i)); });
+    document.dispatchEvent(new CustomEvent('revoada:cena', { detail: { cena: pecas[i].cena } }));
+  };
+  const curso = () => secao.offsetHeight - innerHeight;
+  const mede = () => {
+    quadro = 0;
+    if (!palco) return;
+    const p = Math.min(0.9999, Math.max(0, -secao.getBoundingClientRect().top / curso()));
+    mostra(Math.floor(p * pecas.length));
+  };
+  const rola = () => { if (!quadro) quadro = requestAnimationFrame(mede); };
+  const vai = (i) => scrollTo({ top: scrollY + secao.getBoundingClientRect().top + ((i + 0.5) / pecas.length) * curso() });
+
+  const monta = () => {
+    palco = document.createElement('div'); palco.className = 'passeio-palco';
+    const textos = document.createElement('div'); textos.className = 'passeio-textos';
+    const janela = document.createElement('div'); janela.className = 'janela passeio-janela'; janela.dataset.palco = '';
+    janela.innerHTML = '<div class="barra" aria-hidden="true"><i></i><i></i><i></i></div><div class="passeio-telas"></div>';
+    const nav = document.createElement('nav'); nav.className = 'passeio-nav'; nav.setAttribute('aria-label', 'Telas do app');
+    pecas.forEach((x, i) => {
+      textos.append(x.texto); janela.lastChild.append(x.tela);
+      x.botao = document.createElement('button'); x.botao.type = 'button'; x.botao.textContent = x.rotulo; x.botao.addEventListener('click', () => vai(i));
+      nav.append(x.botao);
+    });
+    palco.append(textos, janela, nav);
+    secao.style.setProperty('--n', pecas.length); secao.classList.add('vivo'); secao.prepend(palco);
+    addEventListener('scroll', rola, { passive: true }); addEventListener('resize', rola);
+    atual = -1; mede();
+  };
+  const desmonta = () => {
+    removeEventListener('scroll', rola); removeEventListener('resize', rola);
+    pecas.forEach((x) => { x.texto.classList.remove('on'); x.tela.classList.remove('on'); x.passo.prepend(x.texto); x.figura.append(x.tela); });
+    palco.remove(); palco = null; secao.classList.remove('vivo');
+  };
+  const ajusta = () => { if (larga.matches && !palco) monta(); else if (!larga.matches && palco) desmonta(); };
+  larga.addEventListener('change', ajusta);
+  ajusta();
+})();
+
+// O fundo. Um campo de fios de grão que ondula devagar, pintado em WebGL em duas passadas, do mesmo jeito da página da Pandora:
+// a primeira desenha os fios (ruído esticado na horizontal, torcido por duas ondas) numa textura pequena; a segunda junta os fios
+// com um grão de 256 pontos puxado na vertical e pinta a tela. Fica preso à janela, atrás da página inteira, um pouco mais
+// fraco que o original para o texto pequeno da capa ler bem, e mais fraco ainda abaixo dela, atrás do texto corrido. Sem WebGL, ficam as faixas em CSS; com menos movimento, um quadro parado.
+(() => {
+  'use strict';
+  const fundo = document.querySelector('[data-fundo]');
+  const tela = fundo?.querySelector('canvas');
+  if (!tela) return;
+  let gl = null, quadro = 0;
+  const desiste = () => { cancelAnimationFrame(quadro); tela.remove(); fundo.classList.remove('gl'); };
+  try { gl = tela.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' }); } catch { /* sem WebGL */ }
+  if (!gl) return desiste();
+
+  const PRECISAO = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n';
+  const VERTICE = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const FIOS = PRECISAO + `uniform vec2 uSize;uniform float uAr,uTime,uIn;uniform vec3 uPtr;
+vec2 h22(vec2 p){vec3 q=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973));q+=dot(q,q.yzx+33.33);return fract((q.xx+q.yz)*q.zy)*2.-1.;}
+float gn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(dot(h22(i),f),dot(h22(i+vec2(1.,0.)),f-vec2(1.,0.)),u.x),mix(dot(h22(i+vec2(0.,1.)),f-vec2(0.,1.)),dot(h22(i+vec2(1.,1.)),f-vec2(1.,1.)),u.x),u.y);}
+float fbm3(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+float fbm5(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uSize*vec2(uAr,1.);float t=uTime;
+  vec2 p=vec2(uv.x/1.03,uv.y/.154);
+  p.y+=.38*sin(uv.x*2.4-t*.30)+.18*sin(uv.x*5.1-t*.45+1.7);
+  p.x-=t*.03;
+  vec2 q=p*vec2(.55,.4);
+  vec2 w=vec2(fbm3(q+vec2(0.,t*.045)),fbm3(q+vec2(4.1,1.3-t*.037)));
+  float a=clamp(.35+1.2*fbm5(p+w*vec2(1.1,.8)),0.,1.);
+  vec2 d=uv-vec2(.5*uAr,.5),e=uv-vec2(uPtr.x*uAr,uPtr.y),l=(uv-vec2(.8*uAr,1.))/vec2(max(uAr,1.)*.63,.7);
+  float m=(1.+.32*uPtr.z*exp(-dot(e,e)/.035))*(1.-.5*smoothstep(.45,1.25,length(d/vec2(max(uAr,1.)*.62,.62))))*uIn*uIn*(3.-2.*uIn);
+  gl_FragColor=vec4(a,m/1.5,exp(-dot(l,l)),1.);}`;
+  const PINTA = PRECISAO + `uniform sampler2D uWisps,uGrain;uniform vec2 uRes;uniform float uDpr,uForca;
+void main(){
+  vec4 w=texture2D(uWisps,gl_FragCoord.xy/uRes);
+  float b=texture2D(uGrain,gl_FragCoord.xy/(uDpr*256.)).r;
+  float al=min(1.,clamp(1.32*(1.1*w.r*b+.45*w.r)-.5,0.,1.)*w.g*1.5)*uForca;
+  gl_FragColor=vec4(mix(vec3(.0667,.0667,.0706),vec3(.50,.50,.51),al)+.045*w.b*uForca,1.);}`;
+
+  const programa = (fragmento) => {
+    const prog = gl.createProgram();
+    for (const [tipo, fonte] of [[gl.VERTEX_SHADER, VERTICE], [gl.FRAGMENT_SHADER, fragmento]]) {
+      const sh = gl.createShader(tipo);
+      gl.shaderSource(sh, fonte); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      gl.attachShader(prog, sh);
+    }
+    gl.bindAttribLocation(prog, 0, 'p'); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const u = {};
+    for (let i = 0; i < gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS); i++) { const nome = gl.getActiveUniform(prog, i).name; u[nome] = gl.getUniformLocation(prog, nome); }
+    return { prog, u };
+  };
+  let fios, pinta;
+  try { fios = programa(FIOS); pinta = programa(PINTA); } catch { return desiste(); }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const textura = (borda, filtro) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtro); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filtro);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, borda); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, borda);
+    return t;
+  };
+
+  // o grão: ruído com semente fixa, cada ponto misturado com os três de baixo, o que puxa o fio na vertical
+  const LADO = 256, grao = new Uint8Array(LADO * LADO);
+  let semente = 5;
+  const sorteia = () => { semente = semente + 1831565813 | 0; let v = Math.imul(semente ^ semente >>> 15, 1 | semente); v = v + Math.imul(v ^ v >>> 7, 61 | v) ^ v; return ((v ^ v >>> 14) >>> 0) / 4294967296; };
+  const fino = Float32Array.from({ length: LADO * LADO }, sorteia), largo = Float32Array.from({ length: LADO * LADO }, sorteia);
+  for (let y = 0; y < LADO; y++) for (let x = 0; x < LADO; x++) {
+    let fio = 0;
+    for (let k = 0; k < 4; k++) fio += fino[(y + k) % LADO * LADO + x];
+    const v = 0.5 + 0.7 * (fio / 4 - 0.5) + 0.2 * ((largo[y * LADO + x] + largo[(y + 1) % LADO * LADO + x]) / 2 - 0.5);
+    grao[y * LADO + x] = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  }
+  const texGrao = textura(gl.REPEAT, gl.NEAREST);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, LADO, LADO, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, grao);
+
+  let placa = gl.getParameter(gl.RENDERER);
+  if (placa === 'WebKit WebGL') { const ext = gl.getExtension('WEBGL_debug_renderer_info'); if (ext) placa = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL); }
+  const fraca = /swiftshader|llvmpipe|software|basic render/i.test(placa);
+  const texFios = textura(gl.CLAMP_TO_EDGE, gl.LINEAR), quadroFios = gl.createFramebuffer();
+  let escala = 1, larg = 1, alt = 1, fiosL = 2, fiosA = 2;
+  const mede = () => {
+    larg = tela.clientWidth || innerWidth; alt = tela.clientHeight || innerHeight;
+    escala = Math.min(fraca ? 0.6 : 1, Math.sqrt(4e6 / (larg * alt)));
+    tela.width = Math.max(1, Math.round(larg * escala)); tela.height = Math.max(1, Math.round(alt * escala));
+    fiosL = Math.max(2, Math.ceil(larg / 6)); fiosA = Math.max(2, Math.ceil(alt / 3));
+    gl.bindTexture(gl.TEXTURE_2D, texFios);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fiosL, fiosA, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texFios, 0);
+    return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  };
+  if (!mede()) return desiste();
+  fundo.classList.add('gl');
+
+  const mouse = { x: 0.5, y: 0.5, on: 0, tx: 0.5, ty: 0.5, ton: 0 };
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; mouse.tx = e.clientX / innerWidth; mouse.ty = 1 - e.clientY / innerHeight; mouse.ton = 1; }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { mouse.ton = 0; });
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)');
+  // na capa o campo aparece inteiro; rolando para o texto corrido ele cai para esta fração
+  const FORCA_NA_CAPA = 0.8, FORCA_NO_TEXTO = 0.42, TEMPO_INICIAL = 40, comeco = performance.now();
+  const forca = () => FORCA_NA_CAPA - (FORCA_NA_CAPA - FORCA_NO_TEXTO) * Math.min(1, scrollY / (innerHeight * 0.7));
+  const desenha = () => {
+    const t = (performance.now() - comeco) / 1000, vivo = !calmo.matches;
+    mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05; mouse.on += (mouse.ton - mouse.on) * 0.03;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios); gl.viewport(0, 0, fiosL, fiosA); gl.useProgram(fios.prog);
+    gl.uniform2f(fios.u.uSize, fiosL, fiosA); gl.uniform1f(fios.u.uAr, larg / alt);
+    gl.uniform1f(fios.u.uTime, vivo ? TEMPO_INICIAL + t : TEMPO_INICIAL);
+    gl.uniform1f(fios.u.uIn, vivo ? Math.min(1, Math.max(0, t - 0.3) / 3.2) : 1);
+    gl.uniform3f(fios.u.uPtr, mouse.x, mouse.y, vivo ? mouse.on : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, tela.width, tela.height); gl.useProgram(pinta.prog);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texFios); gl.uniform1i(pinta.u.uWisps, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texGrao); gl.uniform1i(pinta.u.uGrain, 1);
+    gl.uniform2f(pinta.u.uRes, tela.width, tela.height); gl.uniform1f(pinta.u.uDpr, escala); gl.uniform1f(pinta.u.uForca, forca());
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  const PASSO_MS = fraca ? 49 : 32;
+  let ultimo = -1e9;
+  const laco = (agora) => { quadro = requestAnimationFrame(laco); if (agora - ultimo < PASSO_MS) return; ultimo = agora; desenha(); };
+  const liga = () => { cancelAnimationFrame(quadro); if (calmo.matches) desenha(); else quadro = requestAnimationFrame(laco); };
+  addEventListener('resize', () => { if (!mede()) return desiste(); if (calmo.matches) desenha(); });
+  addEventListener('scroll', () => { if (calmo.matches) desenha(); }, { passive: true });
+  calmo.addEventListener('change', liga);
+  tela.addEventListener('webglcontextlost', (e) => { e.preventDefault(); desiste(); });
+  liga();
 })();

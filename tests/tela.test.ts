@@ -119,16 +119,22 @@ describe.skipIf(!CHROME)("tela", () => {
     const id = await env.chat("claude-padrao", "oi", { cwd: deep });
     await env.idle(id);
     await page(`go({ type: "chat", id: "${id}" });`);
-    await until(`chat && chat.id === "${id}" && document.querySelector("#dirChip span")`);
-    const measure = `const chip = document.querySelector("#dirChip"), strip = chip.parentElement.getBoundingClientRect(), sub = document.querySelector("#chSub").getBoundingClientRect();
-      return { fits: chip.getBoundingClientRect().right <= strip.right + 1, header: sub.right <= innerWidth, page: document.documentElement.scrollWidth <= innerWidth, text: chip.innerText.trim(), full: chip.title.endsWith("scratch-2026-10-07-bf0031") };`;
+    await until(`chat && chat.id === "${id}" && document.querySelector("#chDir span")`);
+    // na conversa a pasta é a etiqueta do topo; o campo de pedido só mostra a pasta na tela inicial
+    const measure = `const chip = document.querySelector("#chDir"), top = chip.parentElement.getBoundingClientRect(), sub = document.querySelector("#chSub").getBoundingClientRect();
+      return { fits: chip.getBoundingClientRect().width > 0 && chip.getBoundingClientRect().right <= top.right + 1, header: sub.right <= innerWidth && [...document.querySelectorAll("#v-chat .topo *")].every((e) => e.getBoundingClientRect().right <= innerWidth + 1), page: document.documentElement.scrollWidth <= innerWidth, text: chip.innerText.trim(), full: chip.title.endsWith("scratch-2026-10-07-bf0031") };`;
     expect(await page(measure)).toEqual({ fits: true, header: true, page: true, text: "…/scratch-2026-10-07-bf0031", full: true });
+    // na tela inicial, com a mesma pasta, a ficha do campo corta o caminho e não passa da faixa
+    const field = `setCwd(${JSON.stringify(deep)}); go({ type: "home" }); await new Promise((r) => setTimeout(r, 120)); const chip = document.querySelector("#dirChip"), strip = chip.parentElement.getBoundingClientRect();
+      const r = { fits: chip.getBoundingClientRect().width > 0 && chip.getBoundingClientRect().right <= strip.right + 1, page: document.documentElement.scrollWidth <= innerWidth, text: chip.innerText.trim(), full: chip.title.endsWith("scratch-2026-10-07-bf0031") }; go({ type: "chat", id: "${id}" }); return r;`;
+    expect(await page(field)).toEqual({ fits: true, page: true, text: "…/scratch-2026-10-07-bf0031", full: true });
     // na menor janela que o app permite (920 de largura) continua cabendo
     await cdp("Emulation.setDeviceMetricsOverride", { width: 920, height: 700, deviceScaleFactor: 1, mobile: false });
     await Bun.sleep(150);
-    const small = await page(measure);
+    const small = await page(measure), smallField = await page(field);
     await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 860, deviceScaleFactor: 1, mobile: false });
-    expect([small.fits, small.header, small.page]).toEqual([true, true, true]);
+    await page(`setCwd(S.home);`);
+    expect([small.fits, small.header, small.page, smallField.fits, smallField.page]).toEqual([true, true, true, true, true]);
   }, SLOW);
 
   test("janela estreita (até 600 de largura): nada sai da tela, na conversa e no início", async () => {
@@ -150,10 +156,10 @@ describe.skipIf(!CHROME)("tela", () => {
         await Bun.sleep(120);
         expect([width, "início", await page(leak)]).toEqual([width, "início", { doc: 0, out: [] }]);
       }
-      // apertado, os botões do campo ficam só com o ícone e a conta continua legível
+      // apertado, a linha sob o campo segue em texto (quebra de linha se precisar) e a conta continua legível
       const row = await page(`go({ type: "chat", id: "${id}" }); await new Promise((r) => setTimeout(r, 200)); const v = (q) => { const e = document.querySelector(q); return !!e && e.getBoundingClientRect().width > 0; };
         return { rotulo: v("#brainChip .lb"), icone: v("#brainChip svg"), conta: document.querySelector("#targetChip .lb").getBoundingClientRect().width > 40, enviar: v("#send") };`);
-      expect(row).toEqual({ rotulo: false, icone: true, conta: true, enviar: true });
+      expect(row).toEqual({ rotulo: true, icone: false, conta: true, enviar: true });
     } finally { await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 860, deviceScaleFactor: 1, mobile: false }); }
     expect(await page(`return document.querySelector("#brainChip .lb").getBoundingClientRect().width > 0`)).toBe(true); // na largura normal o nome volta
   }, SLOW);
@@ -357,7 +363,7 @@ describe.skipIf(!CHROME)("tela", () => {
     // sons: troca o motor de áudio por um contador, pra saber o que tocaria
     await page(`window.played = []; const real = tone; tone = (notes) => { played.push(notes.length); return true; }; for (const k of Object.keys(choice)) delete choice[k]; mode = "edit"; go({ type: "home" });`);
     await page(`picked.clear(); picked.add("claude-padrao"); paintComposer(); document.querySelector("#modelChip").click();`);
-    expect(await page(`return [...document.querySelectorAll("#popModel [data-model]")].map((b) => b.textContent)`)).toEqual(["Padrão da conta", "Automático", "Fable", "Opus", "Sonnet", "Haiku"]);
+    expect(await page(`return [...document.querySelectorAll("#popModel [data-model]")].map((b) => b.textContent)`)).toEqual(["Fable", "Opus", "Sonnet", "Haiku", "Padrão da conta", "Automático"]);
     await page(`document.querySelector('#popModel [data-model="auto"]').click(); closePops(); const p = document.querySelector("#prompt"); p.value = "roda os testes"; p.dispatchEvent(new Event("input", { bubbles: true })); ${key("Enter")}`);
     await until(`view.type === "chat" && chat && !chat.working && document.querySelector("#msgs .mdl")`);
     expect(await page(`return [document.querySelector("#modelChip .lb").textContent, document.querySelector("#msgs .mdl").textContent]`)).toEqual(["Automático", "haiku-teste · auto leve"]);
@@ -386,7 +392,7 @@ describe.skipIf(!CHROME)("tela", () => {
     await until(`document.querySelector('#msgs [data-decide="deny"]')`);
     await page(key("Escape"));
     await until(`chat && !chat.working && document.querySelector("#msgs .askcard.done")`);
-    expect(await page(`return document.querySelector("#msgs .askcard.done").innerText.replace(/\\s+/g, " ").slice(0, 14)`)).toBe("NEGADO Bash · ");
+    expect(await page(`return document.querySelector("#msgs .askcard.done").innerText.replace(/\\s+/g, " ").slice(0, 14)`)).toBe("Negado Bash · ");
     // foi este cartão, com o comando numa linha só, que empurrava a coluna inteira pra fora da tela
     expect(await page(OVERFLOW)).toEqual({ over: 0, scroll: 0, col: 760 });
   }, SLOW);
@@ -415,8 +421,8 @@ describe.skipIf(!CHROME)("tela", () => {
       await wait(() => chat && chat.id === "${negada}" && !chat.working && document.querySelector("#msgs .askcard.done"));
       const b = measure();
       go({ type: "chat", id: "${funda}" });
-      await wait(() => chat && chat.id === "${funda}" && document.querySelector("#dirChip span"));
-      const chip = document.querySelector("#dirChip");
+      await wait(() => chat && chat.id === "${funda}" && document.querySelector("#chDir span"));
+      const chip = document.querySelector("#chDir");
       const pasta = chip.getBoundingClientRect().right <= chip.parentElement.getBoundingClientRect().right + 1 && document.documentElement.scrollWidth <= innerWidth;
       return JSON.stringify({ rica: a, negada: b, pasta, live: alive, webkit: /AppleWebKit/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) });`;
     const run = Bun.spawnSync(["swift", join(import.meta.dir, "webkit.swift"), env.origin, js], { stdout: "pipe", stderr: "pipe" });
@@ -432,7 +438,7 @@ describe.skipIf(!CHROME)("tela", () => {
       const out = [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); return r.width && r.height && r.right > innerWidth + 1 && !e.closest("dialog, .pop, #toast"); }).slice(0, 6).map((e) => e.tagName + "#" + e.id);
       return JSON.stringify({ width: innerWidth, doc: document.documentElement.scrollWidth - innerWidth, out, rotulo: document.querySelector("#brainChip .lb").getBoundingClientRect().width > 0 });`, "600"], { stdout: "pipe", stderr: "pipe" });
     if (narrow.exitCode !== 0) throw new Error(narrow.stderr.toString().slice(-800));
-    expect(JSON.parse(narrow.stdout.toString())).toEqual({ width: 600, doc: 0, out: [], rotulo: false });
+    expect(JSON.parse(narrow.stdout.toString())).toEqual({ width: 600, doc: 0, out: [], rotulo: true });
   }, 90_000);
 
   test("pedido de permissão mostra o comando uma vez; Enter com texto põe na fila, Enter vazio permite", async () => {
@@ -459,5 +465,247 @@ describe.skipIf(!CHROME)("tela", () => {
     expect(c.queue).toBeUndefined();
     await until(`!document.querySelector("#queued .bubble") && document.querySelectorAll("#msgs > .m").length === 4`);
     await env.api(`convos/${id}/stop`, "POST", {});
+  }, SLOW);
+
+  test("menus do campo: modelo em lista curta com esforço e mais modelos ao lado, modo com descrição, e o número escolhe", async () => {
+    await page(`go({ type: "home" }); closePops(); document.querySelector("#modelChip").click();`);
+    const m = await page(`const p = document.querySelector("#popModel"); return { aberto: p.classList.contains("on"), linhas: [...p.querySelectorAll(":scope > .opt")].map((b) => [b.textContent, b.dataset.key]),
+      lados: [...p.querySelectorAll(":scope > .subrow > .opt")].map((b) => b.childNodes[0].textContent), campoALado: !!p.querySelector(".subrow .sub #modelFree") && !p.querySelector(":scope > #modelFree") }`);
+    expect(m).toEqual({ aberto: true, linhas: [["Fable", "1"], ["Opus", "2"], ["Sonnet", "3"], ["Haiku", "4"]], lados: ["Esforço", "Mais modelos"], campoALado: true });
+    await page(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "3", bubbles: true }));`);
+    expect(await page(`return [document.querySelector("#popModel").classList.contains("on"), document.querySelector("#modelChip .lb").textContent.startsWith("Sonnet")]`)).toEqual([false, true]);
+    await page(`document.querySelector("#modelChip").click(); document.querySelector('#popModel [data-model=""]').click(); document.querySelector("#modelChip").click(); document.querySelector('#popModel [data-effort=""]').click();`);
+    await page(`document.querySelector("#modeChip").click();`);
+    const modo = await page(`const p = document.querySelector("#popMode"); return { aberto: p.classList.contains("on"), linhas: [...p.querySelectorAll(".opt")].map((b) => [b.querySelector("b").textContent, !!b.querySelector("small").textContent, b.dataset.key]) }`);
+    expect(modo).toEqual({ aberto: true, linhas: [["Só leitura", true, "1"], ["Pergunta antes", true, "2"], ["Pode editar", true, "3"], ["Acesso total", true, "4"]] });
+    await page(`document.querySelector('#popMode [data-mode="edit"]').click();`);
+    expect(await page(`return [document.querySelector("#popMode").classList.contains("on"), document.querySelector("#modeChip .lb").textContent]`)).toEqual([false, "Pode editar"]);
+    await page(`document.querySelector("#modeChip").click(); document.dispatchEvent(new KeyboardEvent("keydown", { key: "2", bubbles: true }));`);
+    expect(await page(`return document.querySelector("#modeChip .lb").textContent`)).toBe("Pergunta antes");
+  }, SLOW);
+
+  test("lateral: a cópia de trabalho conta para o repositório de origem e a pasta de rascunho vai para Avulsas", async () => {
+    const r = await page(`return {
+      copia: copyOf("/Users/ana/.revoada/worktrees/loja/projeto-ajustar-rodape-b359"), normal: copyOf("/Users/ana/git/loja"),
+      rascunhos: ["/private/tmp/claude-501/x/scratchpad/api", "/private/tmp/claude-501/x/scratchpad", "/Users/ana/sessoes/scratch-2026-11-11-5ec934"].map(isScratch),
+      projetos: ["/Users/ana/git/loja", "/Users/ana/git/scratchy", "/var/folders/m9/abc/T/repo"].map(isScratch) }`);
+    expect(r).toEqual({ copia: "loja", normal: "", rascunhos: [true, true, true], projetos: [false, false, false] });
+  });
+
+  test("lateral: das conversas de outros programas ficam só as da última semana, uma por título e sem as que um agente abriu; as daqui ficam todas", async () => {
+    const r = await page(`const dia = 86_400_000, agora = Date.now();
+      return sideThreads([{ type: "imp", id: "a", title: "igual", at: agora - dia }, { type: "imp", id: "b", title: "igual", at: agora - 2 * dia }, { type: "imp", id: "c", title: "velha", at: agora - 9 * dia },
+        { type: "chat", id: "d", title: "igual", at: agora - 30 * dia }, { type: "chat", id: "e", title: "igual", at: agora - 40 * dia },
+        { type: "imp", id: "f", title: "Primeiro carregue com ToolSearch as definições", at: agora }, { type: "imp", id: "g", title: "Você tem o servidor MCP runway. Pode gerar", at: agora },
+        { type: "imp", id: "h", title: "Você é o testador de lançamento do app", at: agora }, { type: "imp", id: "i", title: "você consegue ver por que o deploy caiu?", at: agora },
+        { type: "chat", id: "j", title: "Você é o revisor", at: agora }]).map((t) => t.id)`);
+    expect(r).toEqual(["a", "d", "e", "i", "j"]);
+  });
+
+  test("menu da sala: o botão direito fixa no topo, arquiva (volta por Arquivadas) e apaga com confirmação", async () => {
+    await page(`expanded.clear(); await refresh(); go({ type: "home" });`);
+    const alvo = await page(`const t = sideThreads(allThreads()).filter((t) => t.type === "chat").pop(); return { key: keyOf(t), total: S.convos.length }`);
+    const menu = (acao: string) => page(`document.querySelector('#threads [data-open="${alvo.key}"]').dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 60, clientY: 200 }));
+      const itens = [...document.querySelectorAll("#popRow .opt")].map((b) => b.textContent.trim()); document.querySelector('#popRow [data-row="${acao}"]').click(); return itens`);
+    await page(`expanded.add("salas"); renderThreads.last = null; renderThreads();`);
+    expect(await menu("pin")).toEqual(["Fixar no topo", "Renomear", "Arquivar", "Apagar"]);
+    await until(`document.querySelector("#threads > .item[data-open]")?.dataset.open === "${alvo.key}" && !!document.querySelector('#threads [data-open="${alvo.key}"] .pin')`);
+    expect((await menu("archive"))[0]).toBe("Desafixar");
+    await until(`!document.querySelector('#threads [data-open="${alvo.key}"]') && [...document.querySelectorAll("#threads .item.more")].some((b) => b.textContent.trim() === "Arquivadas 1")`);
+    await page(`document.querySelector('#threads [data-more="arquivadas"]').click();`);
+    await until(`!!document.querySelector('#threads [data-open="${alvo.key}"]')`);
+    expect((await menu("archive"))[2]).toBe("Desarquivar");
+    await until(`![...document.querySelectorAll("#threads .item.more")].some((b) => b.textContent.trim().startsWith("Arquivadas"))`);
+    // apagar pede confirmação dentro do menu; Cancelar não apaga
+    await menu("del");
+    expect(await page(`const p = document.querySelector("#popRow"); const r = [p.classList.contains("on"), p.querySelector("p").textContent]; p.querySelector('[data-row="del-no"]').click(); return r`)).toEqual([true, "A conversa some de vez."]);
+    expect(await page(`return S.convos.length`)).toBe(alvo.total);
+    await menu("del");
+    await page(`document.querySelector('#popRow [data-row="del-yes"]').click();`);
+    await until(`S.convos.length === ${alvo.total - 1} && !document.querySelector('#threads [data-open="${alvo.key}"]')`);
+    expect(await page(`return [S.marks.pinned.length, S.marks.archived.length]`)).toEqual([0, 0]);
+  }, SLOW);
+
+  test("lateral nova: Salas com as conversas recentes, Projetos que abrem, Bots que levam a Contas e o menu da pessoa", async () => {
+    await page(`localStorage.removeItem("openDirs"); openDirs.clear(); expanded.clear(); setCwd(S.home); await refresh(); go({ type: "home" });`);
+    const side = await page(`const all = allThreads(); return { groups: [...document.querySelectorAll("#threads .grupo")].map((g) => g.textContent.trim()), total: all.length,
+      salas: [...document.querySelectorAll("#threads > .item[data-open]")].map((b) => b.dataset.open), first: all.slice(0, 8).map((t) => t.type + ":" + t.id), more: !!document.querySelector('#threads [data-more="salas"]'),
+      hash: !!document.querySelector("#threads > .item[data-open] svg.i"), dirs: [...document.querySelectorAll("#threads .org-cab [data-dir]")].map((b) => [b.dataset.dir, b.getAttribute("aria-expanded")]), nav: [...document.querySelectorAll("aside .nav .item")].filter((b) => b.getBoundingClientRect().height).map((b) => b.querySelector(".t").textContent) };`);
+    expect(side.groups).toEqual(["Salas", "Projetos"]);
+    expect(side.nav).toEqual(["Precisa de você", "Rotinas", "Tarefas"]);
+    expect(side.total).toBeGreaterThan(8);          // os testes de cima já abriram mais conversas do que cabem
+    expect(side.salas).toEqual(side.first);         // as oito mais recentes, na ordem
+    expect([side.more, side.hash]).toEqual([true, true]);
+    expect(side.dirs.length).toBeGreaterThan(1);
+    expect(side.dirs.every(([, open]: [string, string]) => open === "false")).toBe(true);
+    // "Mostrar mais" abre a lista inteira de Salas
+    await page(`document.querySelector('#threads [data-more="salas"]').click();`);
+    expect(await page(`return document.querySelectorAll("#threads > .item[data-open]").length`)).toBe(side.total);
+    await page(`document.querySelector('#threads [data-more="salas"]').click();`);
+    // um projeto abre e mostra só as conversas dele; o + põe a pasta no campo e vai para o novo chat
+    const dir = env.home;
+    const inside = await page(`document.querySelector('#threads .org-cab [data-dir="${dir}"]').click(); const rows = [...document.querySelectorAll("#threads .item.thread[data-open]")];
+      return { open: document.querySelector('#threads .org-cab [data-dir="${dir}"]').getAttribute("aria-expanded"), rows: rows.length, mine: rows.every((r) => { const [type, id] = r.dataset.open.split(":"); return allThreads().find((t) => t.type === type && t.id === id).cwd === "${dir}"; }), kept: localStorage.getItem("openDirs") };`);
+    expect([inside.open, inside.mine, inside.kept]).toEqual(["true", true, JSON.stringify([dir])]);
+    expect(inside.rows).toBeGreaterThan(0);
+    expect(inside.rows).toBeLessThanOrEqual(5);
+    await page(`document.querySelector('#threads .org-cab [data-dir="${dir}"]').click();`);
+    expect(await page(`return document.querySelectorAll("#threads .item.thread").length`)).toBe(0);
+    await page(`go({ type: "board" }); document.querySelector('#threads [data-newin="${env.repo}"]').click();`);
+    expect(await page(`return [view.type, cwd()]`)).toEqual(["home", env.repo]);
+    await page(`setCwd(S.home);`);
+
+    // Bots: uma linha por conta, com a barra de uso ou "Entrar"; clicar leva a Contas com a conta em foco
+    const bots = await page(`return [...document.querySelectorAll("#bots .item.botl")].map((b) => [b.dataset.acc, b.querySelector(".t").textContent, b.querySelector(".tag").textContent, !!b.querySelector("svg.logo"), b.querySelector(".entrar") ? "Entrar" : b.querySelector(".uso-m") ? "uso" : ""]);`);
+    // só entra em Bots a conta de provedor instalado na máquina (no CI, sem o Gemini e o Grok, elas ficam de fora)
+    const estado = await env.api("state"), accounts = estado.accounts;
+    const instalados = new Set(estado.providers.filter((p: any) => p.installed).map((p: any) => p.id));
+    expect(bots.map((b: string[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider)).map((a: any) => a.id));
+    expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", accounts.find((a: any) => a.id === "claude-padrao").label, true, "uso"]);
+    expect(bots.filter((b: any[]) => b[4] === "Entrar").map((b: any[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider) && !a.status.ok).map((a: any) => a.id));
+    await page(`document.querySelector('#bots [data-acc="claude-padrao"]').click();`);
+    await until(`document.querySelector('#accList .conta.foco')`);
+    expect(await page(`return [view.type, view.focus, document.querySelector("#accList .conta.foco").dataset.conta, document.querySelector('#bots [data-acc="claude-padrao"]').classList.contains("on"), !!document.querySelector("#accList .conta.foco .uso .trilha"), [...document.querySelectorAll("#accList .prov-cab b")].map((b) => b.textContent)]`))
+      .toEqual(["accounts", "claude-padrao", "claude-padrao", true, true, ["Claude", "Codex", "Gemini", "Grok"]]);
+
+    // pé da lateral: o menu da pessoa leva a Cérebro e Clones; o tema nasce escuro e troca pelo botão
+    await page(`localStorage.removeItem("theme"); applyTheme("dark"); document.querySelector("#meBtn").click();`);
+    expect(await page(`return [document.querySelector("#popMe").classList.contains("on"), [...document.querySelectorAll("#popMe .opt")].map((b) => b.textContent.trim().replace(/\\s*\\d.*$/, "")), document.querySelector("#meName").textContent.length > 0, /^\\d+ contas?, \\d+ projetos?$/.test(document.querySelector("#meSub").textContent)]`))
+      .toEqual([true, ["Cérebro", "Clones", "Acompanhar pelo celular", "Ajustes"], true, true]);
+    await page(`document.querySelector('#popMe [data-go="clones"]').click();`);
+    expect(await page(`return [view.type, document.querySelector("#popMe").classList.contains("on")]`)).toEqual(["clones", false]);
+    await page(`document.querySelector("#meBtn").click(); document.querySelector('#popMe [data-go="brain"]').click();`);
+    expect(await page(`return view.type`)).toBe("brain");
+    await page(`document.querySelector("#meBtn").click(); document.querySelector("#meSettings").click();`);
+    expect(await page(`return [document.querySelector("#popSettings").classList.contains("on"), document.querySelector("#popSettings").innerText.includes("Rodízio de contas")]`)).toEqual([true, true]);
+    // um ajuste liga e desliga pelo painel (o clique não pode ser engolido pela troca de tema)
+    const was = (await env.api("state")).settings.autoReview;
+    await page(`document.querySelector('#popSettings [data-set="autoReview"]').click();`);
+    await env.until(async () => (await env.api("state")).settings.autoReview === !was);
+    await env.api("settings", "POST", { autoReview: was });
+    await page(`closePops();`);
+    const theme = await page(`const t = () => document.documentElement.dataset.theme, bg = () => getComputedStyle(document.body).backgroundColor; const a = [t(), bg()]; document.querySelector("#themeBtn").click(); const b = [t(), bg(), localStorage.getItem("theme")]; document.querySelector("#themeBtn").click(); return [a, b, t()];`);
+    expect(theme).toEqual([["dark", "rgb(17, 17, 18)"], ["light", "rgb(251, 251, 250)", "light"], "dark"]);
+    await page(`go({ type: "home" });`);
+  }, SLOW);
+
+  test("Precisa de você: junta permissão pendente, plano do supervisor e tarefa em Revisar, e responde dali", async () => {
+    const asking = await env.chat("claude-padrao", "DEMO-RICA: precisa de mim", { mode: "ask" });
+    await env.until(async () => (await env.api(`convos/${asking}`)).waiting);
+    const mission = (await env.api("missions", "POST", { prompt: "Exportação e importação da loja", cwd: env.repo, targets: ["claude-padrao"] })).id;
+    await env.until(async () => (await env.api(`missions/${mission}`)).state === "plano", 30_000);
+    const card = (await env.api("board", "POST", { prompt: "só conversa, sem mexer em arquivo", cwd: env.repo, target: "claude-padrao" }))[0];
+    await env.api(`board/${card.id}/start`, "POST", {});
+    await env.until(async () => { const c = (await env.api("board")).find((x: any) => x.id === card.id); return c.state === "review" && !c.working; }, 30_000);
+
+    await page(`await refresh(); go({ type: "need" });`);
+    await until(`document.querySelector('#needList [data-need-decide="allow"][data-conv="${asking}"]') && document.querySelector('#needList [data-need-open="mission:${mission}"]') && document.querySelector('#needList [data-need-done="${card.id}"]')`);
+    const seen = await page(`const rows = [...document.querySelectorAll("#needList .pv")]; const row = document.querySelector('#needList [data-conv="${asking}"]').closest(".pv");
+      return { count: document.querySelector("#needCount").textContent, hidden: document.querySelector("#needCount").hidden, rows: rows.length, on: document.querySelector('aside [data-go="need"]').classList.contains("on"),
+        ask: row.innerText.replace(/\\s+/g, " "), logo: !!row.querySelector(".rosto svg.logo"), fits: document.documentElement.scrollWidth <= innerWidth && rows.every((r) => r.getBoundingClientRect().right <= innerWidth) };`);
+    expect([seen.count, seen.hidden, seen.on, seen.logo, seen.fits]).toEqual([String(seen.rows), false, true, true, true]);
+    expect(seen.rows).toBeGreaterThanOrEqual(3);
+    expect(seen.ask).toContain("pede sua permissão");
+    expect(seen.ask).toContain("Rodar este comando");
+    expect(seen.ask).toContain("criar-contas.sh");
+
+    // Permitir responde o pedido sem abrir a conversa; a linha some e o contador desce
+    await page(`document.querySelector('#needList [data-need-decide="allow"][data-conv="${asking}"]').click();`);
+    await env.until(async () => { const c = await env.api(`convos/${asking}`); return !c.waiting && !c.working; });
+    await until(`!document.querySelector('#needList [data-conv="${asking}"]') && +document.querySelector("#needCount").textContent === ${seen.rows - 1}`);
+    expect((await env.api(`convos/${asking}`)).messages.at(-1).items.some((i: any) => i.kind === "ask" && i.state === "allowed")).toBe(true);
+    // tarefa em Revisar: marcar como feito dali mesmo
+    await page(`document.querySelector('#needList [data-need-done="${card.id}"]').click();`);
+    await env.until(async () => (await env.api("board")).find((x: any) => x.id === card.id).state === "done");
+    await until(`!document.querySelector('#needList [data-need-done="${card.id}"]')`);
+    // o plano abre a missão, onde se aprova
+    await page(`document.querySelector('#needList [data-need-open="mission:${mission}"]').click();`);
+    await until(`view.type === "mission" && view.id === "${mission}" && document.querySelector('#misActs [data-m="start"]')`);
+    await env.api(`missions/${mission}`, "DELETE");
+    await env.api(`board/${card.id}`, "DELETE");
+    await page(`await refresh(); go({ type: "need" });`);
+    await until(`!document.querySelector('#needList [data-need-open="mission:${mission}"]')`);
+    // sem nada esperando, a página diz isso e o contador some da lateral
+    const rest = await page(`return [document.querySelectorAll("#needList .pv").length, document.querySelector("#needCount").hidden, !!document.querySelector("#needList .vazio")]`);
+    expect(rest[1]).toBe(rest[0] === 0);
+    expect(rest[2]).toBe(rest[0] === 0);
+    await page(`go({ type: "home" });`);
+  }, 90_000);
+
+  test("Rotinas: a rotina escrita vai para o campo com a hora aberta, e a chave da lista para e retoma", async () => {
+    await page(`picked.clear(); picked.add("claude-padrao"); setCwd(S.home); go({ type: "sched" });`);
+    await until(`document.querySelector("#schedNew") && document.querySelector("#v-sched").classList.contains("on")`);
+    await page(`document.querySelector("#schedNew").value = "resumo do que mudou na semana"; document.querySelector("#schedNewGo").click();`);
+    await until(`view.type === "home" && document.querySelector("#popSched").classList.contains("on")`);
+    expect(await page(`return [document.querySelector("#prompt").value, document.querySelector("#schedNew").value]`)).toEqual(["resumo do que mudou na semana", ""]);
+    await page(`document.querySelector('#schedKind [data-k="daily"]').click(); document.querySelector("#schedSave").click();`);
+    const made = await env.until(async () => { const l = await env.api("schedules"); return l.length === 1 && l[0]; });
+    expect([made.prompt, made.kind, made.enabled, made.target]).toEqual(["resumo do que mudou na semana", "daily", true, "claude-padrao"]);
+    await until(`document.querySelector("#prompt").value === ""`);
+    await page(`await refresh(); go({ type: "sched" });`);
+    await until(`document.querySelector('#schedList .chave[aria-checked="true"]')`);
+    expect(await page(`const r = document.querySelector("#schedList .r"); return [!!r.querySelector(".rosto svg.logo"), r.classList.contains("off"), r.querySelector(".st").innerText.includes("próxima:"), document.documentElement.scrollWidth <= innerWidth]`)).toEqual([true, false, true, true]);
+    await page(`document.querySelector("#schedList .chave").click();`);
+    await until(`document.querySelector('#schedList .chave[aria-checked="false"]') && document.querySelector("#schedList .r.off")`);
+    expect((await env.api("schedules"))[0].enabled).toBe(false);
+    expect(await page(`return [document.querySelector("#schedLead").textContent, document.querySelector("#schedList .st").innerText.includes("parado")]`)).toEqual(["0 pedidos agendados, 1 parado.", true]);
+    await page(`document.querySelector("#schedList .chave").click();`);
+    await until(`document.querySelector('#schedList .chave[aria-checked="true"]')`);
+    expect((await env.api("schedules"))[0].enabled).toBe(true);
+    await page(`document.querySelector("#schedList [data-rm]").click();`);
+    await until(`!document.querySelector("#schedList .r")`);
+    await page(`picked.clear(); go({ type: "home" });`);
+  }, SLOW);
+
+  test("conversa no molde de sala: rosto do provedor, etiqueta da conta, passos contados, e a aba Terminal vai e volta", async () => {
+    const id = await env.chat("claude-padrao", "DEMO-RICA: sala");
+    await env.idle(id);
+    await page(`await refresh(); go({ type: "chat", id: "${id}" });`);
+    await until(`chat && chat.id === "${id}" && !chat.working && document.querySelector("#msgs .acts .cnt")`);
+    const label = (await env.api("state")).accounts.find((a: any) => a.id === "claude-padrao").label;
+    const room = await page(`const ms = [...document.querySelectorAll("#msgs > .m")], bot = ms.at(-1), me = ms[0];
+      return { title: document.querySelector("#chTitle").textContent === chat.title, dir: document.querySelector("#chDir").innerText.trim(), tabs: [...document.querySelectorAll("#v-chat .abas button")].map((b) => [b.textContent, b.getAttribute("aria-current")]),
+        acc: document.querySelector("#chAcc").innerText.trim(), acts: [...document.querySelectorAll("#chActs button")].map((b) => b.textContent),
+        bot: [!!bot.querySelector('[data-k="av"] .rosto svg.logo'), bot.querySelector(".who b").textContent, bot.querySelector(".who .tag").textContent, /^\\d\\d:\\d\\d$/.test(bot.querySelector(".who time").textContent)],
+        me: [me.querySelector('[data-k="av"] .rosto.eu').textContent.length, me.querySelector(".who b").textContent], steps: document.querySelector("#msgs .acts .cnt").textContent,
+        left: Math.round(bot.querySelector('[data-k="av"]').getBoundingClientRect().left - document.querySelector("#msgs").getBoundingClientRect().left), strip: getComputedStyle(document.querySelector("#dirChip")).display };`);
+    expect(room).toEqual({ title: true, dir: "~", tabs: [["Conversa", "true"], ["Terminal", null]], acc: `Claude · ${label}`, acts: ["Plano", "Mudanças", "Revisar", "Segurança"],
+      bot: [true, "Claude", label, true], me: [1, "Você"], steps: "2 passos", left: 0, strip: "none" });
+    expect(await page(OVERFLOW)).toEqual({ over: 0, scroll: 0, col: 760 });
+    // Terminal abre o terminal do agente desta conversa, na mesma pasta; a aba Conversa volta
+    await page(`document.querySelector("#chTerm").click();`);
+    await until(`view.type === "session" && view.from === "${id}" && document.querySelector("#stage .pane.show") && document.querySelector("#thTabs [data-back]")`);
+    const term = await page(`const s = S.sessions.find((x) => x.id === view.id); return [s.accountId, s.cwd === "${env.home}", [...document.querySelectorAll("#thTabs button")].map((b) => [b.textContent, b.getAttribute("aria-current")]), view.id];`);
+    expect(term.slice(0, 3)).toEqual(["claude-padrao", true, [["Conversa", null], ["Terminal", "true"]]]);
+    await page(`document.querySelector("#thTabs [data-back]").click();`);
+    await until(`view.type === "chat" && chat && chat.id === "${id}"`);
+    // de novo: reaproveita o terminal que já está aberto em vez de abrir outro
+    await page(`document.querySelector("#chTerm").click();`);
+    await until(`view.type === "session"`);
+    expect(await page(`return view.id`)).toBe(term[3]);
+    await env.api(`sessions/${term[3]}?purge=1`, "DELETE");
+    await page(`await refresh();`);
+    await until(`view.type === "home"`);
+  }, SLOW);
+
+  test("início no molde de sala vazia e a pílula de apps: atalhos abrem o que já existe, sem item morto", async () => {
+    await page(`setCwd(S.home); go({ type: "home" });`);
+    const home = await page(`return { h1: document.querySelector("#v-home h1").innerText.replace(/\\s+/g, " "), serif: getComputedStyle(document.querySelector("#v-home h1")).fontFamily.includes("Newsreader"), cards: [...document.querySelectorAll("#heroCards b")].map((b) => b.textContent),
+      fonts: await Promise.all(["/geist.woff2", "/geist-mono.woff2", "/newsreader.woff2"].map((u) => fetch(u).then((r) => r.status + " " + r.headers.get("content-type")))), remote: [...document.querySelectorAll("link[href], script[src]")].map((e) => e.getAttribute("href") || e.getAttribute("src")).filter((u) => /^https?:/.test(u)),
+      dead: [...document.querySelectorAll("aside button")].map((b) => b.textContent.trim()).filter((t) => /Reuni|Voz/.test(t)) };`);
+    expect(home).toEqual({ h1: `O que vamos fazer em ${env.home.split("/").pop()}?`, serif: true, cards: ["Escolher quem responde", "Trocar de projeto", "Despejar tarefas"], fonts: ["200 font/woff2", "200 font/woff2", "200 font/woff2"], remote: [], dead: [] });
+    await page(`document.querySelector('#heroCards [data-hero="target"]').click();`);
+    expect(await page(`return [document.querySelector("#popTarget").classList.contains("on"), document.querySelector("#popTarget").getBoundingClientRect().right <= innerWidth]`)).toEqual([true, true]);
+    await page(`document.querySelector('#heroCards [data-hero="dir"]').click();`);
+    expect(await page(`return [document.querySelector("#popDir").classList.contains("on"), document.querySelector("#popTarget").classList.contains("on")]`)).toEqual([true, false]);
+    await page(`closePops(); document.querySelector('#heroCards [data-hero="board"]').click();`);
+    expect(await page(`return view.type`)).toBe("board");
+    // a pílula abre a janela de apps com o que a API de skills e MCP já entrega, e leva à seção em Contas
+    await page(`document.querySelector("#appsPill").click();`);
+    await until(`document.querySelector("#appsDlg").open && document.querySelector("#appsBody .switch")`);
+    expect(await page(`const t = document.querySelector("#appsBody").innerText; return [t.includes("Servidores MCP"), t.includes("Skills"), t.includes("Usar nas outras contas"), document.querySelector("#appsText").textContent.length > 0]`)).toEqual([true, true, true, true]);
+    await page(`document.querySelector("#appsBody [data-apps-acc]").click();`);
+    await until(`view.type === "accounts" && !document.querySelector("#appsDlg").open && document.querySelector("#toolsBox .switch")`);
+    await page(`go({ type: "home" });`);
   }, SLOW);
 });

@@ -841,6 +841,12 @@ async function startRun(prompt: string, targets: string[], cwd: string, edits: b
 }
 
 // ---------- http ----------
+const MARKS_FILE = join(ROOT, "marks.json"), MARKS_MAX = 5000, MARK_KINDS = ["pinned", "archived", "hidden"] as const;
+const marks: Record<(typeof MARK_KINDS)[number], string[]> = { pinned: [], archived: [], hidden: [] };
+{
+  const saved = readJson(MARKS_FILE) || {};
+  for (const kind of MARK_KINDS) if (Array.isArray(saved[kind])) marks[kind] = saved[kind].filter((k: unknown) => typeof k === "string");
+}
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 // Todo erro sai com um código estável além da frase: a frase é pra gente ler, o código é pra agente e script.
 const CODES: [RegExp, string][] = [[/pasta .*não existe/i, "pasta_nao_existe"], [/nenhuma conta pronta|escolha (?:ao menos )?uma conta|escolha quem/i, "sem_conta_pronta"], [/ainda está (?:respondendo|trabalhando)/i, "agente_ocupado"],
@@ -873,7 +879,7 @@ async function state(refresh: boolean) {
   const pending = stale.map(refreshStatus);
   if (refresh || stale.some((a) => !statusCache.has(a.id))) await Promise.all(pending);
   return {
-    home: HOME, projects: PROJECTS,
+    home: HOME, projects: PROJECTS, marks,
     providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, name: p.name, installed: !!binPath(id), efforts: EFFORTS[id] || [], auto: routable(id) })),
     accounts: accounts.map((a) => ({
       id: a.id, provider: a.provider, label: a.label, isolated: !!a.home, envKeys: Object.keys(a.env || {}),
@@ -1041,6 +1047,7 @@ const server = Bun.serve({
     if (path === "/logo.svg" || path === "/icon.svg") return new Response(Bun.file(join(PUBLIC, path)));
     if (path === "/mini") return new Response(Bun.file(join(PUBLIC, "mini.html")));
     if (path === "/md.js" || path === "/sync.js") return new Response(Bun.file(join(PUBLIC, path)));
+    if (path === "/geist.woff2" || path === "/geist-mono.woff2" || path === "/newsreader.woff2") return new Response(Bun.file(join(PUBLIC, path)), { headers: { "content-type": "font/woff2", "cache-control": "max-age=86400" } });
     // só em desenvolvimento: estado de mentira pra olhar o painel da barra com tudo aceso
     if (path === "/api/demo-state" && process.env.REVOADA_DEMO) return json(demoState(await state(false)));
     if (path.startsWith("/vendor/")) {
@@ -1293,6 +1300,20 @@ const server = Bun.serve({
       }
       const items = await clones.scan(url.searchParams.has("scan"));
       return json({ ...clones.summary(), items });
+    }
+
+    // marcas da lateral: sala fixada no topo, arquivada (sai da lista, volta por Arquivadas) ou tirada da lista (a conversa de
+    // outro programa que a pessoa não quer ver aqui; o arquivo dela, que é do outro programa, não é tocado)
+    if (resource === "marks" && req.method === "POST") {
+      const keys = (Array.isArray(body.keys) ? body.keys : [body.key]).filter((k: unknown): k is string => typeof k === "string" && k.length > 2 && k.length < 600).slice(0, MARKS_MAX);
+      for (const kind of MARK_KINDS) {
+        if (typeof body[kind] !== "boolean") continue;
+        const set = new Set(marks[kind]);
+        for (const k of keys) body[kind] ? set.add(k) : set.delete(k);
+        marks[kind] = [...set].slice(-MARKS_MAX);
+      }
+      writeFileSync(MARKS_FILE, JSON.stringify(marks));
+      return json(marks);
     }
 
     if (resource === "settings" && req.method === "POST") {

@@ -1,288 +1,236 @@
 ---
 name: Revoada
-description: Página do projeto Revoada no sistema Plumagem da AraraHQ, com foto de bando, letra monumental e conversa transcrita em fita.
+description: Página do projeto Revoada no tema Grafite do app. Capa de tela inteira sobre um campo de grão que ondula, e abaixo dela uma janela presa com o app de verdade, que troca de cena conforme a rolagem.
 colors:
-  noite: "#050a0b"
-  ink: "#0a0f10"
-  ink-2: "#465659"
-  ink-3: "#5f7175"
-  paper: "#fbfcfc"
-  paper-2: "#f1f5f5"
-  line: "rgba(10, 15, 16, 0.1)"
-  line-2: "rgba(10, 15, 16, 0.2)"
-  teal: "#1c99a7"
-  teal-ink: "#136f7a"
-  mint: "#9be8ea"
-  ambar-ink: "#8a5a06"
-  plate: "#0f343d"
-  plate-hover: "#17505b"
+  fundo: "#111112"
+  lateral: "#0c0c0d"
+  sup: "#19191b"
+  sup-2: "#232326"
+  fio: "rgba(255, 255, 255, 0.075)"
+  fio-2: "rgba(255, 255, 255, 0.14)"
+  tinta: "#ededee"
+  tinta-2: "#a7a7ac"
+  tinta-3: "#6f6f75"
+  botao: "#ededee"
+  sobre-botao: "#111112"
+  term: "#0a0a0b"
 typography:
   display:
-    fontFamily: "Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
-    fontSize: "ajustado em JS à largura da capa (até 28vh em tela deitada, 20vh em pé)"
-    fontWeight: 600
-    lineHeight: 0.86
-    letterSpacing: "-0.055em"
-  headline-prancha:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(2.6rem, 7.4vw, 7.25rem)"
-    fontWeight: 600
-    lineHeight: 0.92
-    letterSpacing: "-0.052em"
-  headline:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(2.3rem, 7vw, 6.5rem)"
-    fontWeight: 600
-    lineHeight: 0.95
-    letterSpacing: "-0.05em"
-  headline-secao:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(2.2rem, 5.6vw, 5.25rem)"
-    fontWeight: 600
-    lineHeight: 0.98
-    letterSpacing: "-0.045em"
-  title:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.3rem, 2.1vw, 1.75rem)"
-    fontWeight: 600
-    lineHeight: 1.15
-    letterSpacing: "-0.03em"
-  fala:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.0625rem, 1.5vw, 1.25rem)"
+    fontFamily: "Newsreader, 'Iowan Old Style', Georgia, serif"
+    fontSize: "clamp(2.75rem, 6.6vw, 5.25rem)"
     fontWeight: 400
-    lineHeight: 1.38
+    lineHeight: 1.02
+    letterSpacing: "-0.024em"
+  headline:
+    fontFamily: "Newsreader, 'Iowan Old Style', Georgia, serif"
+    fontSize: "clamp(1.75rem, 3.1vw, 2.625rem)"
+    fontWeight: 400
+    lineHeight: 1.14
+    letterSpacing: "-0.016em"
+  marca:
+    fontFamily: "Newsreader, 'Iowan Old Style', Georgia, serif"
+    fontSize: "1.3125rem"
+    fontWeight: 400
     letterSpacing: "-0.012em"
-  body:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.0625rem"
+  lead:
+    fontFamily: "Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "clamp(1.0625rem, 1.35vw, 1.25rem)"
     fontWeight: 400
     lineHeight: 1.55
-  label:
+  body:
+    fontFamily: "Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 400
+    lineHeight: 1.6
+  termo:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.8125rem"
+    fontSize: "1.0625rem"
     fontWeight: 500
-    lineHeight: 1.5
-  mono:
-    fontFamily: "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+    lineHeight: 1.6
+  nota:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9375rem"
     fontWeight: 400
-    lineHeight: 1.85
+    lineHeight: 1.55
+  mono:
+    fontFamily: "'Geist Mono', ui-monospace, Menlo, monospace"
+    fontSize: "0.9375rem"
+    fontWeight: 400
+    lineHeight: 1.9
+  mono-detalhe:
+    fontFamily: "'Geist Mono', ui-monospace, Menlo, monospace"
+    fontSize: "0.8125rem"
+    fontWeight: 400
+    letterSpacing: "-0.01em"
 rounded:
-  sm: "6px"
-  md: "10px"
-  lg: "18px"
+  sm: "5px"
+  md: "12px"
   pill: "999px"
 spacing:
-  margem: "clamp(20px, 4.4vw, 64px)"
-  container: "1360px"
-  secao: "clamp(84px, 11vw, 168px)"
-  capitulo: "clamp(72px, 10vw, 150px)"
-  bloco: "clamp(28px, 4.5vw, 64px)"
-  fala: "14px"
+  margem: "clamp(16px, 4vw, 48px)"
+  container: "1280px"
+  respiro: "clamp(72px, 10vw, 136px)"
+  coluna: "clamp(32px, 6vw, 96px)"
+  topo-do-bloco: "clamp(28px, 4vw, 52px)"
 components:
-  button-plate:
-    backgroundColor: "{colors.plate}"
-    textColor: "#ffffff"
+  button:
+    backgroundColor: "{colors.botao}"
+    textColor: "{colors.sobre-botao}"
     rounded: "{rounded.pill}"
-    padding: "0 26px"
-    height: "52px"
-  button-plate-hover:
-    backgroundColor: "{colors.plate-hover}"
-  button-photo:
-    backgroundColor: "#ffffff"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.pill}"
-    padding: "0 26px"
-    height: "52px"
-  button-photo-hover:
-    backgroundColor: "#e4f6f6"
-  nav-pill:
-    backgroundColor: "{colors.plate}"
-    textColor: "#ffffff"
-    rounded: "{rounded.pill}"
-    padding: "0 18px"
-    height: "40px"
-  chip-som:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-2}"
-    rounded: "{rounded.pill}"
-    padding: "0 15px 0 13px"
-    height: "40px"
-  chip-som-tocando:
-    backgroundColor: "{colors.ink}"
-    textColor: "#ffffff"
-  copiar:
-    backgroundColor: "rgba(255, 255, 255, 0.12)"
-    textColor: "#ffffff"
-    rounded: "{rounded.pill}"
-    padding: "0 14px"
-    height: "36px"
-  copiar-feito:
-    backgroundColor: "{colors.mint}"
-    textColor: "{colors.plate}"
-  comandos-bloco:
-    backgroundColor: "rgba(5, 10, 11, 0.62)"
-    textColor: "#e6f2f2"
+    padding: "0 22px"
+    height: "46px"
+  button-hover:
+    opacity: 0.88
+  janela:
+    backgroundColor: "{colors.lateral}"
+    rounded: "{rounded.md}"
+    border: "1px {colors.fio-2}"
+    shadow: "0 18px 50px rgba(0, 0, 0, 0.5)"
+  janela-barra:
+    backgroundColor: "{colors.lateral}"
+    height: "34px"
+    border: "1px {colors.fio}"
+  recorte:
+    rounded: "{rounded.md}"
+    border: "1px {colors.fio-2}"
+  comandos:
+    backgroundColor: "{colors.term}"
+    textColor: "{colors.tinta}"
     typography: "{typography.mono}"
-    rounded: "{rounded.lg}"
-    padding: "20px 112px 20px 22px"
+    rounded: "{rounded.md}"
+    padding: "20px 22px"
+  codigo:
+    backgroundColor: "{colors.sup}"
+    textColor: "{colors.tinta}"
+    rounded: "{rounded.sm}"
+  faixa:
+    backgroundColor: "{colors.lateral}"
+    border: "1px {colors.fio}"
 ---
 
 # Design System: Revoada
 
 ## Overview
 
-**Creative North Star: "O Bando sobre o Papel"**
+**Creative North Star: "A mesma sala, vista de fora"**
 
-A Revoada é irmã do ararahq.com e fala a língua da Plumagem: noite quase preta nas pranchas de foto, papel quase branco entre elas, letra Geist enorme e apertada, fio de um pixel e um teal escuro que só aparece onde algo age. A diferença da Arara está na imagem: no lugar da plumagem, fotografias de bando (estorninhos em revoada na capa e no fecho, gansos em V na prova de segurança). O sistema foi fixado pelo usuário em 18/10/2026 e portado do protótipo da Arara (`lp-ticket-alto`), depois adaptado.
+A página do projeto é a continuação do app. Usa o tema Grafite inteiro, com os mesmos tokens de `public/index.html`: fundo cinza quase preto, tinta clara, fio de um pixel, títulos numa serifa (Newsreader), texto em Geist e detalhes pequenos em Geist Mono. Não há cor de marca. O único elemento cheio é o botão claro, um por dobra.
 
-A página alterna três pranchas escuras de foto (capa, confiança, fecho) com uma folha de papel que sobe por cima da capa presa. No papel, o produto se mostra como conversa transcrita em fita: hora, quem fala, a frase. Não existe tela desenhada nem moldura de app. A densidade é baixa e editorial: perguntas grandes, um parágrafo curto, uma fita, muito ar medido. A rejeição confirmada é a landing genérica de ferramenta de IA: print do app em moldura, grade de cartões e gradiente decorativo.
+O produto se mostra em print real. Cada bloco traz uma ideia e a tela do app que a prova, numa moldura simples de janela. As telas vêm do modo de demonstração (`bun run demo`), com contas, projetos e pedidos de exemplo.
 
-O movimento é a assinatura: a capa chega com um zoom lento e respira, o título sobe linha a linha, a frase de baixo gira entre situações e volta à primeira, e cada capítulo toca a conversa fala a fala quando entra na tela. Tudo para com `prefers-reduced-motion`.
+A versão anterior (sistema Plumagem, foto de bando, letra monumental em Geist 600, folha de papel clara e conversa transcrita em fita) foi trocada por esta em 11/11/2026, a pedido do dono, para a página parecer do mesmo produto que o app novo.
 
 **Key Characteristics:**
-- Duas superfícies apenas: noite com foto e papel. Nenhuma terceira cor de fundo.
-- Letra Geist 600 com tracking negativo forte; o tamanho faz a hierarquia, não a cor.
-- Fio fino (1px) estrutura capítulos, fitas, perguntas e fatos; nenhum cartão.
-- Teal tinta para agente e resultado; âmbar tinta para limite e perda.
-- Pílula branca sobre a foto, placa teal sobre o papel.
-- Grão gerado na hora sobre toda foto.
+- Escuro e cinza, sem gradiente, sem brilho e sem acento de cor. O âmbar e o verde só aparecem dentro dos prints, porque são do app.
+- Título grande só na capa. Do segundo bloco em diante a escala é contida.
+- Print real em moldura de janela, sempre na largura inteira do container para ficar legível.
+- Título à esquerda e texto à direita em todo bloco. A mesma grade de duas colunas (5 e 6) serve às listas e às perguntas.
+- Um botão cheio por dobra. O resto é link sublinhado.
 
 ## Colors
 
-Uma paleta quase monocromática de cinzas esverdeados, com o teal como única voz e o âmbar como alarme.
-
-### Primary
-- **Placa Petróleo** (plate): fundo do botão principal e da pílula da barra quando ela vira papel. É a cor de ação sobre o papel. No hover escurece para **Petróleo Aceso** (plate-hover).
-- **Teal Tinta** (teal-ink): nome de agente na fita, número de resultado na última fala, link com seta no papel, contorno de foco e cursor de texto. Marca quem trabalha e o que deu certo.
-- **Teal Vivo** (teal): a ave da ponta do logo sobre o papel e o fundo da seleção de texto. Não serve para texto corrido.
-
-### Secondary
-- **Menta** (mint): o equivalente do teal sobre a noite. Ave da ponta do logo sobre a foto e no rodapé, link com seta nas pranchas, foco sobre fundo escuro e o estado "Copiado".
-
-### Tertiary
-- **Âmbar Tinta** (ambar-ink): só para o estado de limite na fita ("Limite de uso atingido", "bateu no limite") e para a perda no exemplo de antes ("16 minutos"). Herdado do âmbar de limite e espera do app.
+Todos os valores são os do `:root` do app. Mudou lá, muda aqui.
 
 ### Neutral
-- **Noite** (noite): fundo das pranchas, da capa, do rodapé e do `body`; também o `theme-color`.
-- **Tinta** (ink): texto principal no papel, fio forte que abre capítulo e primeira pergunta.
-- **Tinta Média** (ink-2): parágrafos de apoio, descrições e fala de antes.
-- **Tinta Clara** (ink-3): hora e falante na fita, legenda, fato narrado, a palavra "Quando" das perguntas grandes. Fica acima de 4.5:1 sobre o papel.
-- **Papel** (paper): a folha que cobre a capa e a barra rolada.
-- **Papel Sombra** (paper-2): fundo do `code` dentro do texto.
-- **Fio** (line) e **Fio Forte** (line-2): divisórias entre falas e linhas de lista (line), topo de fita, borda de chip e pé de comparação (line-2).
-
-Sobre a noite, o texto usa branco com opacidade em degraus fixos: 0.86 a 0.84 para lead, 0.7 a 0.62 para apoio e nota, 0.5 para o legal, 0.24 a 0.12 para fios.
+- **fundo** `#111112`: o fundo da página, igual ao da área principal do app.
+- **lateral** `#0c0c0d`: as faixas (segurança e instalar), o rodapé e o corpo da moldura de janela. É o tom da lateral do app.
+- **sup** `#19191b` e **sup-2** `#232326`: fundo de `code` e os três pontos da barra da janela.
+- **fio** e **fio-2**: branco a 7,5% e a 14%. Separam linhas de lista e contornam molduras.
+- **tinta** `#ededee`: títulos, termos e links.
+- **tinta-2** `#a7a7ac`: parágrafos, notas e legendas. Contraste de 7,7:1 sobre o fundo.
+- **tinta-3** `#6f6f75`: só enfeite sem informação (o `$` dos comandos). Não passa em AA para texto pequeno.
 
 ### Named Rules
-**A Regra das Duas Tintas.** Teal tinta só nomeia agente ou resultado; âmbar tinta só nomeia limite ou perda. Nenhuma das duas decora.
-
-**A Regra do Par Claro e Escuro.** Toda cor de acento tem par: teal tinta e placa no papel, menta e branco na noite. Nunca leve o teal tinta para a foto nem a menta para o papel.
+- **Regra do botão único.** `botao` sobre `sobre-botao` aparece uma vez por dobra: "Instalar em 4 comandos" na capa, "Copiar os comandos" no fecho, "Voltar ao início" na 404.
+- **Regra do cinza.** Nenhuma cor nova entra na página. Se um estado precisar de destaque, usa peso ou tinta, nunca matiz.
 
 ## Typography
 
-**Display Font:** Geist (com ui-sans-serif e system-ui)
-**Body Font:** Geist
-**Label/Mono Font:** Geist Mono, só para comandos
-
-**Character:** Uma família só, que fica monumental pelo peso 600 e pelo tracking muito negativo e fica calma no corpo em 400. O contraste vem de escala, não de troca de fonte.
+Três famílias, servidas pelo próprio site (`site/*.woff2`, copiadas de `public/`), sem CDN.
 
 ### Hierarchy
-- **Display** (600, ajustado à largura da capa, 0.86, -0.055em): só o título da capa, "Continue a conversa", em uma linha na tela deitada e duas na tela em pé.
-- **Headline de prancha** (600, clamp(2.6rem, 7.4vw, 7.25rem), 0.92, -0.052em): título das pranchas de confiança e fecho, até 12 a 13ch; o fecho sobe até 8rem.
-- **Headline** (600, clamp(2.3rem, 7vw, 6.5rem), 0.95, -0.05em): a pergunta grande de cada capítulo ("Quando a tarefa é grande."), com a primeira palavra em tinta clara.
-- **Headline de seção** (600, clamp(2.2rem, 5.6vw, 5.25rem), 0.98, -0.045em): título de seção comum, como o das perguntas.
-- **Title** (600, clamp(1.3rem, 2.1vw, 1.75rem), 1.15, -0.03em): a virada de cada capítulo e a última fala da fita, quebrada em duas frases.
-- **Fala** (400, clamp(1.0625rem, 1.5vw, 1.25rem), 1.38, -0.012em): a frase dentro da fita, até 54ch.
-- **Body** (400, 1.0625rem, 1.55): parágrafo de apoio, até 44 a 46ch; cai para 1rem abaixo de 620px.
-- **Label** (500, 0.8125rem): hora, falante, legenda, nota. Em caixa normal, sem tracking.
-- **Mono** (400, 0.9375rem, 1.85): bloco de comandos de instalação e a linha de comandos da seção de agentes.
+- **display** (Newsreader 400, até 5,25rem, entrelinha 1,02): só o `h1` da capa, em até 13 caracteres por linha.
+- **headline** (Newsreader 400, até 2,625rem): o `h2` de cada bloco, em até 19 caracteres por linha.
+- **marca** (Newsreader 400, 1,3125rem): "revoada" em minúsculas ao lado das três aves, como na lateral do app.
+- **lead** e **body** (Geist 400): o apoio da capa e os parágrafos, em `tinta-2`, com até 60 caracteres por linha.
+- **termo** (Geist 500): `dt` das listas e `summary` das perguntas, em `tinta`.
+- **mono** e **mono-detalhe** (Geist Mono): os comandos de instalar, `code` no meio do texto e a nota curta sob o botão da capa.
 
 ### Named Rules
-**A Regra do Peso Único.** Título é sempre 600 com tracking negativo proporcional ao tamanho; nunca 700, nunca caixa alta, nunca itálico.
-
-**A Regra do Título que Equilibra.** Títulos usam `text-wrap: balance` e parágrafos `text-wrap: pretty`; frases longas de virada se partem em duas metades explícitas.
+- **Regra da serifa.** Newsreader só em título e na marca. Nunca em parágrafo.
+- **Regra da mono.** Geist Mono só onde há código, comando ou requisito de máquina.
 
 ## Layout
 
-Coluna única com container de 1360px e margem lateral fluida (`margem`), respeitando a safe area. Capítulos são uma grade assimétrica 5fr / 6fr: texto à esquerda, fita à direita, com vão de até 112px. A comparação antes e depois é uma grade 1fr / 1fr de duas fitas. A confiança usa três colunas de fatos.
+Container de 1280px com margem lateral de 16 a 48px. O print de 1280 pontos de largura entra em tamanho real no desktop largo.
 
-O ritmo vertical é grande e regular: seção com `secao` de respiro, capítulos separados por `capitulo` e abertos por um fio de tinta, blocos internos a `bloco`. A fita é uma grade de três colunas (3.6rem hora, 8.4rem falante, resto frase) com 14px de respiro por fala.
+- **Capa:** `h1`, depois uma linha de duas colunas (apoio à esquerda, botão e nota à direita) e a janela principal logo abaixo, já visível na primeira dobra.
+- **Bloco:** topo em duas colunas (título em 5, texto em 6) e a janela na largura inteira.
+- **Faixa:** fundo `lateral` com fio em cima e embaixo. Usada na segurança e no fecho.
+- **Lista:** linhas separadas por `fio`, com o título do bloco na coluna da esquerda.
+- **Ritmo:** `respiro` entre blocos.
 
-A capa ocupa 100svh (mínimo 560px), fica presa no topo e a folha de papel sobe por cima dela com uma sombra ambiente. A barra é fixa, 68px, branca e transparente sobre a capa; vira papel depois dela.
-
-Abaixo de 1100px somem os links da barra. Abaixo de 900px todas as grades viram uma coluna e a linha decorativa de comandos some. Abaixo de 620px a fala passa a hora e o falante numa linha e a frase embaixo, e a base da capa empilha texto, ações e nota.
+Abaixo de 860px tudo vira uma coluna. Cada print tem três arquivos: janela inteira em 1280 pontos, janela inteira em 920 pontos (até 1040px de tela) e recorte só da área principal, sem a lateral (até 700px), para o texto do app não ficar ilegível no celular.
 
 ## Elevation & Depth
 
-O sistema é plano. A profundidade vem da camada, não da sombra: a foto fica atrás de um véu em gradiente escuro e de um grão de ruído, e a folha de papel desliza sobre a capa presa. As fotos das pranchas se deslocam devagar com a rolagem, e a da capa acompanha o ponteiro em sentido oposto ao título.
-
-### Shadow Vocabulary
-- **Borda da folha** (`box-shadow: 0 -28px 60px -30px rgba(0, 0, 0, 0.55)`): só na folha que cobre a capa.
-- **Vidro do comando** (`box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 30px 60px -36px rgba(0, 0, 0, 0.8)` com `backdrop-filter: blur(10px)`): só no bloco de comandos sobre a foto do fecho.
-- **Fio da barra** (`box-shadow: 0 1px 0 line`): a barra quando vira papel.
-
-### Named Rules
-**A Regra do Véu.** Toda foto leva véu e grão. Texto nunca senta direto sobre a imagem crua.
-
-**A Regra do Papel Plano.** No papel não existe sombra; separação é fio de 1px ou espaço.
+Uma sombra só, a `--sombra` do app (`0 18px 50px rgba(0, 0, 0, 0.5)`), nas molduras de janela. O resto é plano e separado por fio.
 
 ## Shapes
 
-Duas formas mandam: a pílula (999px) para tudo que se aperta (botão, chip, copiar) e o retângulo sem canto para o resto, cortado por fios. O único bloco com canto é o vidro de comandos (18px). Cantos pequenos de 6px ficam para `code` em linha e para o contorno de foco; 10px só para o link de pular conteúdo. O logo, três aves em formação com a da ponta em acento, é a única silhueta orgânica.
+Raio de 12px em molduras e no bloco de comandos, 5px em `code`, pílula no botão. Ícones em traço de 1,75 (seta, mais, copiar), desenhados no próprio HTML.
 
 ## Components
 
-### Buttons
-Firmes e calmos: uma pílula cheia por bloco, acompanhada de um link sublinhado.
-- **Shape:** pílula (999px), 52px de altura (50px no celular), seta de 17px em traço à direita.
-- **Primary no papel:** placa petróleo com texto branco; hover em petróleo aceso.
-- **Primary na foto:** branco com texto em tinta; hover em `#e4f6f6`.
-- **Hover / Focus / Active:** a seta anda 3px para a direita; aperto em `scale(0.96)`; foco com contorno de 2px (teal tinta no papel, menta na noite) a 3px de distância.
-- **Sub-elo:** texto 500 sublinhado a 1px com 6px de offset, sublinhado em 30% a 40% da cor que fica cheio no hover.
-- **Elo com seta:** texto 500 em teal tinta (papel) ou menta (noite), seta que anda no hover, alvo mínimo de 44px.
+### Botão
+Pílula clara de 46px de altura, Geist 500. Hover em 88% de opacidade, clique encolhe para 97%. Foco com contorno de 2px em `tinta`.
 
-### Chips
-- **Style:** os botões de ouvir os sons do app; pílula de 40px, fundo transparente, borda interna em fio forte, texto tinta média com ícone de alto-falante em traço.
-- **State:** hover escurece texto e borda para tinta; tocando inverte para tinta cheia com texto branco.
+### Link (`.elo`)
+Texto em `tinta` com sublinhado em `fio-2` que vira `tinta` no hover. A seta anda 3px.
 
-### Navigation
-- Barra fixa de 68px, logo com marca à esquerda, links de seção, GitHub e a pílula "Instalar" à direita.
-- Sobre a capa: tudo branco, links ocultos, pílula vazada com borda branca a 30%.
-- Depois da capa: fundo papel, fio inferior, links aparecem em 82% de opacidade (100% no hover) e a pílula vira placa petróleo.
+### Janela (assinatura)
+Moldura dos prints: barra de 34px com três pontos cinza, fio de um pixel em volta, raio de 12px e a sombra do app. O print dentro dela é sempre uma tela real, em 2x, com `width`, `height` e `alt` que descreve o que aparece.
 
-### Fita (assinatura)
-A conversa transcrita que substitui a tela desenhada. Lista ordenada com fio forte no topo e fio entre falas. Cada fala tem hora em números tabulares, falante em label (teal tinta quando é agente, no formato "Claude · trabalho") e a frase em tamanho de fala. Variações: **fato** (frase narrada, 1rem em tinta clara, sem falante), **limite** (frase em âmbar tinta) e **volta** (última fala em title, sem fio, com o resultado em teal tinta, ou em âmbar tinta quando é perda). Toda fita tem legenda acima dizendo que é exemplo. Ao entrar na tela, cada fala aparece na sua vez com 0.22s de intervalo, subindo 10px e saindo de um desfoque de 4px.
+### Recorte
+Trecho de uma tela, sem barra de janela, só com o fio e o raio. Usado no pedido de permissão do bloco de segurança.
 
-### Par antes e depois
-Duas fitas lado a lado com legendas em 500 tinta: à esquerda a situação fora do app (falas em tinta média, perda em âmbar), à direita no app (agentes em teal, resultado em teal). Embaixo, um pé com fio forte, a virada e as ações, que entra 1.2s depois.
-
-### Prancha de confiança
-Prancha escura com foto de gansos em V, título de prancha até 13ch, lead em branco 84% e três fatos em coluna, cada um aberto por fio branco a 24%, com o título do fato em 600 e a explicação em `small` branco 70%.
-
-### Bloco de comandos
-Vidro escuro de 18px sobre a foto do fecho, comandos em Geist Mono com um `$` em branco 40% que não se seleciona, e o botão Copiar em pílula translúcida no canto, que vira menta com texto petróleo em "Copiado". No celular o botão desce para baixo do bloco e a rolagem horizontal ganha um esmaecido na borda.
+### Lista e fatos
+`dl` em linhas com fio: termo em `tinta` 500, descrição em `tinta-2`.
 
 ### Perguntas
-Acordeão de `details` entre fios, o primeiro em tinta. A pergunta em 500, o sinal de mais em traço que gira 45 graus ao abrir, e um fio de tinta que acende embaixo quando o ponteiro chega perto. A resposta abre por `grid-template-rows`.
+`details` nativo. O sinal de mais gira 45 graus ao abrir.
+
+### Bloco de comandos
+`pre` em Geist Mono sobre `term`, com `$` em `tinta-3` na frente de cada linha e rolagem lateral própria em tela estreita. O botão "Copiar os comandos" fica embaixo e confirma no próprio rótulo.
+
+## Motion
+
+Um movimento só: a janela da capa assenta ao carregar (opacidade, 18px de subida e recorte, 0,9s, saída exponencial). Com `prefers-reduced-motion` nada se move.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** alternar só duas superfícies: prancha de noite com foto, véu e grão, e folha de papel.
-- **Do** mostrar o produto como fala transcrita na fita, sempre com a legenda de exemplo.
-- **Do** usar teal tinta só para agente e resultado, e âmbar tinta só para limite e perda.
-- **Do** usar uma pílula cheia por bloco de ações, com sub-elo sublinhado ao lado.
-- **Do** separar com fio de 1px e espaço; abrir capítulo com fio em tinta.
-- **Do** escrever títulos em Geist 600 com tracking negativo e deixar a escala fazer a hierarquia.
-- **Do** desligar toda animação e transição com `prefers-reduced-motion`.
-- **Do** escrever a interface em português do Brasil, curta, sem travessão e sem emoji, com o nome uma vez por tela.
+- Tirar todo print do modo de demonstração (`DEMO_PORT=4792 bun scripts/demo.ts`), nunca do app instalado de alguém.
+- Em tela larga a janela do passeio mostra o app de verdade num `iframe` (`site/demo/`, gerado de `public/index.html` por `bun scripts/site-demo.ts`, com servidor e agentes de mentira dentro da página); em tela pequena, com movimento reduzido ou sem script ficam os prints.
+- Manter os tokens iguais aos do app.
+- Dizer cada fato uma vez e sustentar cada afirmação no README.
+- Conferir a página em 360, 390, 768, 1440 e 1800 de largura.
 
 ### Don't:
-- **Don't** pôr print do app em moldura, grade de cartões ou gradiente decorativo.
-- **Don't** criar terceira cor de fundo, nem cartão com sombra sobre o papel.
-- **Don't** pôr texto direto sobre foto sem véu.
-- **Don't** usar o teal vivo para texto corrido, nem a menta sobre o papel.
-- **Don't** mostrar bastidor técnico na interface (contador, fps, colofão).
-- **Don't** reaproveitar a primeira versão recusada (bando em canvas com céu do dia à noite) nem a janela de app recriada.
+- Gradiente, brilho, vidro, cor de marca ou ícone em grade de cartões.
+- Ilustração ou tela recriada no lugar do print.
+- Rótulo pequeno em cima de título, ou numeração de seção.
+- Segundo botão cheio na mesma dobra.
+- Fonte de CDN ou biblioteca nova.
+
+
+## A página hoje (11/11/2026)
+
+O que vale quando este documento e o código discordarem em algum trecho mais antigo acima:
+
+- **Fundo.** Um campo de fios de grão pintado em WebGL (`site/main.js`, bloco "O fundo"), portado da landing da Pandora: uma passada desenha os fios numa textura pequena, a outra junta com um grão de 256 pontos puxado na vertical. Fica preso à janela, atrás da página inteira, a 80% da força na capa e 42% atrás do texto corrido. Sem WebGL, entram cinco faixas onduladas em CSS (`.fundo i`). Com menos movimento, um quadro parado.
+- **Capa.** Tela inteira, tudo no centro: a marca em serifa, a frase, uma linha de apoio, um link sublinhado no lugar do botão e uma linha de garantia. No topo, o aviso de código aberto à esquerda e a navegação pequena à direita. No pé, os quatro agentes com o símbolo de cada um. O texto de apoio da capa usa `--apoio-capa` (#c9c9cd), mais claro que o do resto, porque fica por cima do campo.
+- **Passeio.** Cinco ideias (`conversa`, `limite`, `precisa`, `tarefas`, `rotinas`). Em tela larga elas dividem uma janela só, presa na tela: a rolagem escolhe a ideia, o texto e a cena trocam juntos, e os nomes embaixo levam a cada uma. A janela mostra o app de verdade num `iframe` (`site/demo/`, gerado por `bun scripts/site-demo.ts`), dirigido por mensagens; os prints ficam de cartaz até ele carregar. Em tela pequena, com menos movimento ou sem script, cada ideia fica com o seu print, uma embaixo da outra.
+- **Seções.** Segurança, extras, perguntas e instalar em coluna central, sem faixa de fundo nem borda entre elas. Fatos em grade de duas ou três colunas com fio de um pixel em cima. Perguntas e instalar em coluna de 760px.
+- **Cor de texto.** `--tinta` para títulos, `--tinta2` para texto corrido, `--apoio` (#b1b1b6) para notas. `--tinta3` não vai em texto: dá 3,8:1 sobre o fundo.
+- **Movimento.** O campo de grão, a troca de cena do passeio e as perguntas, que abrem deslizando. Nada entra animado ao carregar.

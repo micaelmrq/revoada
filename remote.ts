@@ -73,7 +73,7 @@ export function createRemote(d: {
     if (req.method === "GET" && (path === "/" || path === "/m")) {
       return new Response(Bun.file(join(d.publicDir, "remoto.html")), { headers: { ...headers, "content-security-policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'" } });
     }
-    if (req.method === "GET" && (path === "/icon.svg" || path === "/logo.svg" || path === "/md.js")) return new Response(Bun.file(join(d.publicDir, path)), { headers });
+    if (req.method === "GET" && (path === "/icon.svg" || path === "/logo.svg" || path === "/md.js" || path === "/geist.woff2" || path === "/geist-mono.woff2")) return new Response(Bun.file(join(d.publicDir, path)), { headers });
     if (!path.startsWith("/r/")) return new Response("not found", { status: 404, headers });
 
     const lock = fails.get(ip);

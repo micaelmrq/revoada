@@ -3,51 +3,29 @@
 <head>
 <meta charset="utf-8">
 <title>Cartão de link da Revoada</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap">
 <style>
-  /* O cartão que aparece quando o link da página é compartilhado (og.jpg, 1200x630): a foto da capa, o nome, a promessa
-     e para quem é. O canto de baixo à esquerda fica livre, porque algumas redes põem o domínio por cima da imagem ali. */
+  /* O cartão que aparece quando o link da página é compartilhado (og.jpg, 1200x630): a frase da capa e o print real
+     da conversa (img/conversa.webp), no tema Grafite. O canto de baixo à esquerda fica livre, porque algumas redes
+     põem o domínio por cima da imagem ali. Para refazer: abrir esta página em 1200x630 e salvar como ../og.jpg. */
+  @font-face { font-family: "Geist"; src: url("../geist.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Newsreader"; src: url("../newsreader.woff2") format("woff2"); font-weight: 200 800; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 1200px; height: 630px; overflow: hidden; background: #050a0b; }
-  body { position: relative; font-family: 'Geist', system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
-  .foto { position: absolute; inset: 0; background: url("../img/revoada-capa.webp") 62% 40% / cover no-repeat; filter: brightness(1.12) contrast(1.04) saturate(0.92); }
-  .veu {
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(180deg, rgba(4, 9, 10, 0.55) 0%, rgba(4, 9, 10, 0.08) 28%, rgba(4, 9, 10, 0.1) 52%, rgba(4, 9, 10, 0.82) 100%),
-      linear-gradient(90deg, rgba(4, 9, 10, 0.5), rgba(4, 9, 10, 0) 62%);
-  }
-  .marca { position: absolute; left: 64px; top: 54px; display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 600; letter-spacing: -0.03em; }
-  .marca svg { width: 62px; height: 41px; }
-  .meio { position: absolute; left: 64px; right: 64px; top: 196px; }
-  h1 { width: max-content; margin-left: -0.04em; font-size: 132px; font-weight: 600; line-height: 0.86; letter-spacing: -0.055em; white-space: nowrap; }
-  .quem { margin-top: 24px; font-size: 46px; font-weight: 500; line-height: 1.12; letter-spacing: -0.035em; color: rgba(255, 255, 255, 0.62); }
-  .quem span { color: #fff; }
-  .pra { margin-top: 40px; font-size: 27px; line-height: 1.3; letter-spacing: -0.01em; color: rgba(255, 255, 255, 0.86); }
+  html, body { width: 1200px; height: 630px; overflow: hidden; background: #111112; }
+  body { position: relative; font-family: "Geist", system-ui, sans-serif; color: #ededee; -webkit-font-smoothing: antialiased; }
+  .marca { position: absolute; left: 64px; top: 56px; display: flex; align-items: center; gap: 12px; font: 400 32px/1 "Newsreader", Georgia, serif; letter-spacing: -0.012em; }
+  .marca svg { width: 42px; height: 28px; }
+  h1 { position: absolute; left: 64px; top: 168px; width: 470px; font: 400 68px/1.04 "Newsreader", Georgia, serif; letter-spacing: -0.024em; }
+  p { position: absolute; left: 64px; top: 404px; width: 420px; font-size: 23px; line-height: 1.4; color: #a7a7ac; }
+  .janela { position: absolute; left: 590px; top: 64px; width: 900px; overflow: hidden; border-radius: 12px; background: #0c0c0d; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 18px 50px rgba(0, 0, 0, 0.5); }
+  .barra { display: flex; align-items: center; gap: 7px; height: 30px; padding-left: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.075); }
+  .barra i { width: 9px; height: 9px; border-radius: 50%; background: #232326; }
+  img { display: block; width: 100%; }
 </style>
 </head>
 <body>
-  <div class="foto"></div>
-  <div class="veu"></div>
-  <p class="marca"><svg viewBox="150 250 720 480" aria-hidden="true"><path d="M240.6 383.8Q288 292.3 351.3 362.4Q404.2 284.1 464 368.2Q405.1 328.2 354.3 405.5Q293.3 336 240.6 383.8Z" fill="#fff" fill-opacity=".45"/><path d="M496.7 466.5Q555.6 316.5 665.4 415.2Q734.8 284.9 841.4 405.8Q743.3 353.3 677.1 481.7Q571 383.6 496.7 466.5Z" fill="#9be8ea"/><path d="M164.6 690.3Q280.1 456.9 449.5 626.1Q580 425.4 741.5 629.6Q585.8 535.4 460.8 733.5Q297.3 565.7 164.6 690.3Z" fill="#fff"/></svg>Revoada</p>
-  <div class="meio">
-    <h1>Continue a conversa</h1>
-    <p class="quem">quando <span>uma conta bate no limite.</span></p>
-    <p class="pra">Suas contas de Claude Code, Codex, Gemini CLI e Grok num app de Mac.</p>
-  </div>
-  <script>
-    // a letra ocupa a largura útil, como na capa; data-pronto marca a hora do print, com a fonte e a foto carregadas
-    (async () => {
-      const h = document.querySelector('h1');
-      await Promise.all([
-        document.fonts.load('600 100px Geist'), document.fonts.load('500 46px Geist'), document.fonts.load('400 27px Geist'),
-        new Promise((ok) => { const i = new Image(); i.onload = i.onerror = ok; i.src = '../img/revoada-capa.webp'; }),
-      ]);
-      h.style.fontSize = '100px';
-      h.style.fontSize = Math.min(150, ((1200 - 64 * 2) / h.getBoundingClientRect().width) * 100).toFixed(1) + 'px';
-      document.documentElement.dataset.pronto = h.style.fontSize;
-    })();
-  </script>
+  <div class="marca"><svg viewBox="150 250 720 480" aria-hidden="true" fill="#ededee"><path d="M240.6 383.8Q288 292.3 351.3 362.4Q404.2 284.1 464 368.2Q405.1 328.2 354.3 405.5Q293.3 336 240.6 383.8Z" fill-opacity=".45"/><path d="M496.7 466.5Q555.6 316.5 665.4 415.2Q734.8 284.9 841.4 405.8Q743.3 353.3 677.1 481.7Q571 383.6 496.7 466.5Z"/><path d="M164.6 690.3Q280.1 456.9 449.5 626.1Q580 425.4 741.5 629.6Q585.8 535.4 460.8 733.5Q297.3 565.7 164.6 690.3Z"/></svg>revoada</div>
+  <h1>Seus agentes de código, numa sala só.</h1>
+  <p>Claude Code, Codex, Gemini CLI e Grok num app de Mac, com as contas que você já paga.</p>
+  <div class="janela"><div class="barra"><i></i><i></i><i></i></div><img src="../img/conversa.webp" alt=""></div>
 </body>
 </html>

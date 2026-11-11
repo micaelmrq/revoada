@@ -36,12 +36,12 @@ Funções confirmadas no README: contas isoladas por provedor; rodízio que leva
 
 Limites que a página não pode esconder: só macOS em Apple Silicon; interface só em português; aprovação por ação, texto ao vivo e janela de contexto só com o Claude; ferramentas para agentes só com o Claude e o Codex; Grok sem modo estruturado; pedido agendado não acorda o Mac; app assinado só localmente (sem Developer ID); usar várias contas pode ter regras próprias em cada provedor.
 
-Termos do produto: conta, rodízio, no limite, Pergunta antes, Pode editar, quadro, cópia isolada, revisão cruzada, supervisor, cérebro, Mac acordado, ponte MCP.
+Termos do produto: conta, bot, sala, projeto, rodízio, no limite, Precisa de você, Pergunta antes, Pode editar, tarefas, rotinas, cópia isolada, revisão cruzada, supervisor, cérebro, Mac acordado, ponte MCP.
 
 ## Brand Commitments
 
-- Nome Revoada; no app a marca aparece em minúsculas, "revoada". Logo: três aves em formação, a da ponta em teal (`public/icon.svg`, `public/logo.svg`).
-- Interface do app: Geist e Geist Mono nos rótulos, tema claro e escuro, teal como destaque (#0e7490 no claro, #4fc3d9 no escuro), âmbar para limite e espera.
+- Nome Revoada; no app e na página a marca aparece em minúsculas, "revoada", em serifa. Logo: três aves em formação (`public/icon.svg`, `public/logo.svg`); na interface elas saem em cinza, sem a ponta em teal.
+- Interface do app: tema Grafite, escuro por padrão e claro como opção, em cinza, com um botão cheio por tela. Títulos de página em Newsreader, texto em Geist, detalhes em Geist Mono, todas servidas pelo próprio app. Âmbar só para limite e espera; verde só para conta ativa.
 - Voz: português do Brasil, direta, sem jargão, sem travessão, sem emoji, nada festivo. Copy curta.
 - Sem bastidor técnico na interface (nada de contador, fps ou colofão técnico); cada dado e o nome aparecem uma vez por tela; espaço vazio precisa de função.
 - A página precisa dizer que a Revoada não é afiliada à Anthropic, OpenAI, Google ou xAI.

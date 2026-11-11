@@ -3,24 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b100f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111112" media="(prefers-color-scheme: dark)">
 <title>Revoada</title>
 <link rel="icon" href="/icon.svg">
 <style>
   /* Página do celular: mesma paleta do painel, uma coluna, alvos de toque grandes. */
-  :root { --bg: #ffffff; --soft: #eceff0; --line: #dfe7e6; --ink: #0d1514; --on-ink: #ffffff; --text: #18211f; --mute: #5d6d6a; --faint: #8a9794; --red: #dc4347; --amber: #c97d16; --teal: #0e7490; }
+  @font-face { font-family: "Geist"; src: url("/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/geist-mono.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  :root { --bg: #fbfbfa; --soft: #f1f1f0; --line: #e0e0df; --ink: #111112; --on-ink: #fbfbfa; --text: #111112; --mute: #55555a; --faint: #8a8a90; --red: #c23b38; --amber: #8a5a06; --teal: #55555a; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0b100f; --soft: #1a2221; --line: #212b2a; --ink: #eef2f1; --on-ink: #0b100f; --text: #e4e9e8; --mute: #93a19e; --faint: #66736f; --red: #f0686b; --amber: #eaa94a; --teal: #4fc3d9; }
+    :root { --bg: #111112; --soft: #19191b; --line: #2a2a2d; --ink: #ededee; --on-ink: #111112; --text: #ededee; --mute: #a7a7ac; --faint: #6f6f75; --red: #ef6f6c; --amber: #e5b454; --teal: #a7a7ac; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; }
-  body { background: var(--bg); color: var(--text); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.45 "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
   button, textarea { font: inherit; color: inherit; }
   button { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
   button:disabled { opacity: .4; }
   .num { font-variant-numeric: tabular-nums; }
-  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .mono { font-family: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace; }
   .label { font: 11px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 
   header { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top) + 12px) 16px 12px; border-bottom: 1px solid var(--line); min-height: 56px; }

@@ -1,0 +1,8 @@
+  /* demonstração do site: o que depende da máquina (terminal, anexo, celular, login, cofre) sai da tela */
+  #termChip, #chTerm, #attChip, #mePhone, #openPhone, #seePlan, #mkPr, #addAcc, #dAddHint, [data-add-acc], [data-go-start],
+  #accList [data-open], #accList [data-login], #accList [data-add], .acts:has(#brainSync),
+  .sec:has(.noteform), .sec:has(#brainSem), .sec:has(#brainTeach), .sec:has(#brainTidy) { display: none !important; }
+  #demo-cursor { position: fixed; left: 0; top: 0; z-index: 2147483647; margin: -3px 0 0 -4px; pointer-events: none; opacity: 0; transform: translate(62vw, 58vh); transition: transform .6s cubic-bezier(.3, .7, .2, 1), opacity .25s ease; }
+  #demo-cursor.on { opacity: 1; }
+  #demo-cursor svg { display: block; fill: #f4f4f5; stroke: #111112; stroke-width: 1.4; stroke-linejoin: round; filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .45)); transition: transform .12s ease; }
+  #demo-cursor.toque svg { transform: scale(.8); }
