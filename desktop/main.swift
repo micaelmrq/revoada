@@ -31,7 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   var loaded = false
   var status: StatusController!
 
-  var dark: Bool { NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
   var logURL: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".revoada/app.log") }
 
   func applicationDidFinishLaunching(_ note: Notification) {
@@ -54,7 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     window.titlebarAppearsTransparent = true
     window.minSize = NSSize(width: 920, height: 600)
     window.isReleasedWhenClosed = false
-    window.backgroundColor = dark ? NSColor(red: 0.043, green: 0.063, blue: 0.059, alpha: 1) : .white
+    // o app nasce no tema Grafite escuro: a janela e a abertura já vêm nele, antes de a página carregar
+    window.backgroundColor = NSColor(red: 0.067, green: 0.067, blue: 0.071, alpha: 1)
     window.center()
     window.setFrameAutosaveName("RevoadaMain")
 
@@ -144,12 +144,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
   }
 
   func splash(_ text: String) {
-    let fg = dark ? "#93a19e" : "#5d6d6a", bg = dark ? "#0b100f" : "#ffffff", ink = dark ? "#e4e9e8" : "#18211f"
+    let fg = "#a7a7ac", bg = "#111112", ink = "#ededee"
     var logo = ""
-    if let url = Bundle.main.resourceURL?.appendingPathComponent("assets/public/logo.svg"), let svg = try? String(contentsOf: url, encoding: .utf8) { logo = svg }
+    if let url = Bundle.main.resourceURL?.appendingPathComponent("assets/public/logo.svg"), let svg = try? String(contentsOf: url, encoding: .utf8) { logo = svg.replacingOccurrences(of: "fill=\"#1ea7c0\"", with: "fill=\"currentColor\" fill-opacity=\".7\"") }
     web.loadHTMLString("""
       <html><body style="margin:0;height:100vh;display:grid;place-items:center;background:\(bg);color:\(ink);font:14px -apple-system,sans-serif;-webkit-user-select:none">
-      <div style="text-align:center"><div style="width:96px;margin:0 auto 18px">\(logo)</div><div style="color:\(fg)">\(text)</div></div></body></html>
+      <div style="text-align:center"><div style="width:72px;margin:0 auto 16px">\(logo)</div><div style="color:\(fg)">\(text)</div></div></body></html>
       """, baseURL: nil)
   }
 

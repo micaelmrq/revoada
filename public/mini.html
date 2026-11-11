@@ -6,21 +6,23 @@
 <title>Revoada</title>
 <style>
   /* Painel da barra de menus: fundo transparente, o vidro fosco vem da janela nativa. */
-  :root { --text: #101816; --mute: rgba(16,24,22,.62); --faint: rgba(16,24,22,.38); --card: rgba(255,255,255,.46); --line: rgba(16,24,22,.10); --teal: #0b7f99; --red: #d63a3f; --amber: #b9720f; --ink: #0d1514; --on-ink: #fff; }
+  @font-face { font-family: "Geist"; src: url("/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/geist-mono.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  :root { --text: #111112; --mute: rgba(17,17,18,.62); --faint: rgba(17,17,18,.40); --card: rgba(255,255,255,.46); --line: rgba(17,17,18,.10); --teal: #55555a; --red: #c23b38; --amber: #8a5a06; --ink: #111112; --on-ink: #fbfbfa; }
   @media (prefers-color-scheme: dark) {
-    :root { --text: #f1f5f4; --mute: rgba(241,245,244,.62); --faint: rgba(241,245,244,.36); --card: rgba(255,255,255,.07); --line: rgba(255,255,255,.10); --teal: #5fd6e6; --red: #ff7a7d; --amber: #f0b560; --ink: #f1f5f4; --on-ink: #0b100f; }
+    :root { --text: #ededee; --mute: rgba(237,237,238,.62); --faint: rgba(237,237,238,.38); --card: rgba(255,255,255,.07); --line: rgba(255,255,255,.10); --teal: #a7a7ac; --red: #ef6f6c; --amber: #e5b454; --ink: #ededee; --on-ink: #111112; }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: transparent; }
-  body { font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; color: var(--text); -webkit-user-select: none; user-select: none; cursor: default; -webkit-font-smoothing: antialiased; }
+  body { font: 13px/1.4 "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; color: var(--text); -webkit-user-select: none; user-select: none; cursor: default; -webkit-font-smoothing: antialiased; }
   body.preview { background: linear-gradient(135deg, #2b6777, #c9a35a 55%, #7a3b52); min-height: 100vh; padding: 30px; }
-  body.preview #root { background: rgba(245,248,247,.72); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-  @media (prefers-color-scheme: dark) { body.preview #root { background: rgba(22,28,27,.70); } }
+  body.preview #root { background: rgba(251,251,250,.72); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  @media (prefers-color-scheme: dark) { body.preview #root { background: rgba(17,17,18,.70); } }
   #root { width: 372px; padding: 14px 14px 12px; }
   button, input { font: inherit; color: inherit; }
   button { background: none; border: 0; padding: 0; cursor: default; }
   .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .mono { font-family: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace; }
 
   header { display: flex; align-items: center; gap: 9px; padding: 0 2px 12px; }
   header .logo { width: 26px; line-height: 0; }
