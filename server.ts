@@ -868,6 +868,19 @@ function listDirs() {
   return out.slice(0, 400);
 }
 
+// as subpastas de uma pasta do computador, para a escolha de pasta navegar fora dos projetos
+const LS_MAX = 300;
+function listSubdirs(dir: unknown) {
+  const p = typeof dir === "string" && dir.trim() ? dir.trim().replace(/^~(?=\/|$)/, HOME) : HOME;
+  try {
+    if (!statSync(p).isDirectory()) return { dir: p, exists: false, parent: dirname(p), subs: [] };
+    const subs = readdirSync(p, { withFileTypes: true })
+      .filter((d) => !d.name.startsWith(".") && d.name !== "node_modules" && (d.isDirectory() || (d.isSymbolicLink() && validCwd(join(p, d.name)))))
+      .map((d) => d.name).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })).slice(0, LS_MAX);
+    return { dir: p, exists: true, parent: dirname(p), subs };
+  } catch { return { dir: p, exists: false, parent: dirname(p), subs: [] }; }
+}
+
 function validCwd(cwd: unknown) {
   const p = typeof cwd === "string" && cwd.trim() ? cwd.trim().replace(/^~(?=\/|$)/, HOME) : HOME;
   try { if (statSync(p).isDirectory()) return p; } catch {}
@@ -1043,10 +1056,12 @@ const server = Bun.serve({
       if (!s) return new Response("sessão não existe", { status: 404 });
       return srv.upgrade(req, { data: { sid: s.id } }) ? undefined : new Response("upgrade falhou", { status: 400 });
     }
-    if (path === "/" || path === "/index.html") return new Response(Bun.file(join(PUBLIC, "index.html")));
-    if (path === "/logo.svg" || path === "/icon.svg") return new Response(Bun.file(join(PUBLIC, path)));
-    if (path === "/mini") return new Response(Bun.file(join(PUBLIC, "mini.html")));
-    if (path === "/md.js" || path === "/sync.js") return new Response(Bun.file(join(PUBLIC, path)));
+    // telas e scripts sempre conferidos com o servidor: a janela nativa guarda cópia em disco e, sem isso, o app atualizado abria a tela da versão anterior
+    const fresco = (arquivo: string) => new Response(Bun.file(join(PUBLIC, arquivo)), { headers: { "cache-control": "no-cache" } });
+    if (path === "/" || path === "/index.html") return fresco("index.html");
+    if (path === "/logo.svg" || path === "/icon.svg") return fresco(path);
+    if (path === "/mini") return fresco("mini.html");
+    if (path === "/md.js" || path === "/sync.js") return fresco(path);
     if (path === "/geist.woff2" || path === "/geist-mono.woff2" || path === "/newsreader.woff2") return new Response(Bun.file(join(PUBLIC, path)), { headers: { "content-type": "font/woff2", "cache-control": "max-age=86400" } });
     // só em desenvolvimento: estado de mentira pra olhar o painel da barra com tudo aceso
     if (path === "/api/demo-state" && process.env.REVOADA_DEMO) return json(demoState(await state(false)));
@@ -1063,6 +1078,7 @@ const server = Bun.serve({
     if (resource === "state") return json(await state(url.searchParams.has("refresh")));
     if (resource === "guide") return json({ guide: GUIDE, limite: AGENT_BUDGET });
     if (resource === "dirs") return json(listDirs());
+    if (resource === "ls") return json(listSubdirs(url.searchParams.get("dir")));
 
     // entrada única do campo de pedido: uma conta abre sessão, várias respondem em paralelo
     if (resource === "chat" && req.method === "POST") {

@@ -200,6 +200,7 @@
   #appsDlg { width: min(640px, 92vw); max-height: 86vh; overflow-y: auto; } #appsBody { padding-top: 14px; }
   .apps-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
   .app-c { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio2); min-width: 0; }
+  .selo.de-app svg { width: 58%; height: 58%; fill: currentColor; display: block; }
   .app-c .selo { width: 34px; height: 34px; border-radius: 9px; font-weight: 600; text-transform: uppercase; }
   .app-c b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .app-c span span { color: var(--tinta3); font-size: 13px; }
   .app-c > span:nth-child(2) { min-width: 0; }
@@ -244,6 +245,8 @@
 
   /* início: sala vazia, com o grão da identidade */
   #v-home { position: relative; isolation: isolate; }
+  #v-home canvas.campo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #v-home.gl::before { display: none; }
   #v-home::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--grao); opacity: .5;
     -webkit-mask-image: radial-gradient(70% 13% at 28% 14%, #000, transparent 72%), radial-gradient(80% 12% at 78% 34%, #000, transparent 72%), radial-gradient(75% 14% at 30% 58%, #000, transparent 72%), radial-gradient(85% 12% at 72% 84%, #000, transparent 72%);
     mask-image: radial-gradient(70% 13% at 28% 14%, #000, transparent 72%), radial-gradient(80% 12% at 78% 34%, #000, transparent 72%), radial-gradient(75% 14% at 30% 58%, #000, transparent 72%), radial-gradient(85% 12% at 72% 84%, #000, transparent 72%); }
@@ -300,7 +303,19 @@
   .opt .ck { width: 16px; height: 16px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--tinta3); display: grid; place-items: center; flex: none; }
   .opt.on .ck { background: var(--botao); box-shadow: none; color: var(--sobre-botao); }
   .opt small { color: var(--tinta3); margin-left: auto; padding-left: 14px; white-space: nowrap; }
-  #popDir { left: 0; bottom: calc(100% + 6px); padding: 12px; width: min(380px, 100%); min-width: 0; }
+  #popDir { left: 0; bottom: calc(100% + 6px); padding: 0; width: min(400px, 100%); min-width: 0; max-height: none; overflow: hidden; }
+  #popDir #dirBusca { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--fio); border-radius: 0; background: none; outline: none; padding: 12px 16px; font-size: 14px; box-shadow: none; }
+  #popDir #dirBusca::placeholder { color: var(--tinta3); }
+  #dirLista { max-height: 296px; overflow-y: auto; padding: 6px; }
+  #dirLista .opt { width: 100%; }
+  #dirLista .opt.ativa { background: var(--sup); }
+  #dirLista .opt b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: none; max-width: 60%; }
+  #dirLista .opt .val { margin-left: 0; padding-left: 8px; flex: 1; text-align: left; white-space: nowrap; }
+  #dirLista .opt .visto { margin-left: 8px; }
+  #dirLista .opt .volta { display: flex; transform: scaleX(-1); color: var(--tinta3); } #dirLista .opt .ir { margin-left: auto; }
+  #dirLista .vazio { padding: 10px; color: var(--tinta3); font-size: 13px; }
+  #dirPe { border-top: 1px solid var(--fio); padding: 6px; }
+  #dirPe .opt { width: 100%; } #dirPe small { display: block; padding: 6px 10px; color: var(--tinta3); font-size: 12.5px; }
   #popTarget { right: 0; bottom: 54px; max-width: 100%; }
   #popSched { left: 0; bottom: 54px; width: min(340px, 100%); min-width: 0; padding: 14px; }
   #popSched.on { display: grid; gap: 12px; } #popSched small { color: var(--tinta2); font-size: 12.5px; line-height: 1.45; }
@@ -507,10 +522,11 @@
   .conta .acao { justify-self: end; display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
   .conta.limite { border-bottom-color: transparent; }
   .uso { display: grid; gap: 6px; min-width: 0; }
-  .uso .l { display: grid; grid-template-columns: 52px minmax(0, 1fr) 150px; gap: 9px; white-space: nowrap; align-items: center; color: var(--tinta3); font-size: 13px; }
+  .uso .l { display: grid; grid-template-columns: 104px minmax(0, 1fr) 150px; gap: 9px; white-space: nowrap; align-items: center; color: var(--tinta3); font-size: 13px; }
   .uso .trilha { height: 4px; border-radius: 4px; background: var(--sup2); overflow: hidden; }
   .uso .trilha i { display: block; height: 100%; border-radius: 4px; background: var(--tinta2); }
   .uso .l.alto .trilha i { background: var(--ambar); } .uso .l.alto span:last-child { color: var(--ambar); }
+  .uso .l span:first-child { overflow: hidden; text-overflow: ellipsis; }
   .uso .l span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; }
   .conta-nota { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 4px; border-radius: 10px; background: var(--sup); color: var(--tinta2); font-size: 13.5px; }
   .conta-nota svg.i { color: var(--ambar); } .conta-nota b { font-weight: 500; color: var(--tinta); } .conta-nota .btn { margin-left: auto; flex: none; }
@@ -553,7 +569,7 @@
   .board .card .st { font-size: 12.5px; color: var(--tinta2); display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; } .board .card .st.run { color: var(--tinta2); } .board .card .st.wait { color: var(--ambar); } .board .card .st.bad { color: var(--erro); }
   .board .card .st i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.6s ease-in-out infinite; }
   .board .card .do { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; justify-content: flex-end; } .board .empty { color: var(--tinta3); font-size: 13px; padding: 12px 2px; }
-  @media (max-width: 860px) { .wrap { padding: 24px 18px 50px; } .hero h1 { font-size: 24px; } .conta, .clone { grid-template-columns: minmax(0, 1fr); gap: 10px; } .conta .acao { justify-self: start; justify-content: flex-start; } .uso .l { grid-template-columns: 52px minmax(0, 1fr); white-space: normal; } .uso .l span:last-child { grid-column: 2; text-align: left; }
+  @media (max-width: 860px) { .wrap { padding: 24px 18px 50px; } .hero h1 { font-size: 24px; } .conta, .clone { grid-template-columns: minmax(0, 1fr); gap: 10px; } .conta .acao { justify-self: start; justify-content: flex-start; } .uso .l { grid-template-columns: 104px minmax(0, 1fr); white-space: normal; } .uso .l span:last-child { grid-column: 2; text-align: left; }
     .pv, .board .card { grid-template-columns: 26px minmax(0, 1fr); } .pv-a, .board .card .do { grid-column: 2; justify-content: flex-start; } .rows .r.rot-l { grid-template-columns: 26px minmax(0, 1fr) 36px; } .rot-l .st { grid-column: 2 / -1; grid-row: 2; text-align: left; justify-items: start; } .ptitle { flex-direction: column; gap: 14px; } .ptitle .acts { justify-content: flex-start; } }
   /* demonstração do site: o que depende da máquina (terminal, anexo, celular, login, cofre) sai da tela */
   #termChip, #chTerm, #attChip, #mePhone, #openPhone, #seePlan, #mkPr, #addAcc, #dAddHint, [data-add-acc], [data-go-start],
@@ -598,6 +614,7 @@
 
 <main>
   <section class="view" id="v-home">
+    <canvas class="campo" aria-hidden="true"></canvas>
     <div class="hero"><div class="miolo">
       <span data-logo class="marca-g"></span>
       <h1>O que vamos fazer em <button id="heroDir"></button>?</h1>
@@ -695,8 +712,11 @@
     <div class="chatscroll" id="chatScroll"><div class="msgs" id="msgs"></div><div class="msgs" id="queued"></div></div>
   </section>
     <div class="composer" id="composer">
-      <div class="pop" id="popDir"><span class="label" style="padding:0 0 8px">Pasta de trabalho</span>
-        <input type="text" id="cwd" list="dirs" spellcheck="false" autocomplete="off" aria-label="Pasta de trabalho"><datalist id="dirs"></datalist></div>
+      <div class="pop" id="popDir">
+        <input type="text" id="dirBusca" placeholder="Pesquisar pastas" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="dirLista" aria-label="Pesquisar pastas ou colar um caminho">
+        <div id="dirLista" role="listbox" aria-label="Pasta de trabalho"></div>
+        <div id="dirPe"></div>
+        <input type="hidden" id="cwd"></div>
       <div class="pop" id="popTarget"></div>
       <div class="pop" id="popSched"><span class="label" style="padding:0">Agendar este pedido</span>
         <div class="seg" id="schedKind" style="justify-self:start"><button data-k="once" class="on">Uma vez</button><button data-k="daily">Todo dia</button></div>
@@ -1198,16 +1218,36 @@ function paintMe() {
   $("meSub").textContent = `${plural(S.accounts.length, "conta", "contas")}, ${plural(dirs.size, "projeto", "projetos")}`;
 }
 // apps conectados: os servidores MCP e as skills da conta padrão, que as outras contas recebem
+// marca de cada app conhecido, pelo nome do servidor MCP. Os traços vêm do Simple Icons 16.37 (CC0), em grade de 24;
+// app sem marca aqui (os seus e os que a coleção não tem) fica com a inicial.
+const APP_MARCA = {
+  linear: "M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z",
+  figma: "M15.852 8.981h-4.588V0h4.588c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.491-4.49 4.491zM12.735 7.51h3.117c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-3.117V7.51zm0 1.471H8.148c-2.476 0-4.49-2.014-4.49-4.49S5.672 0 8.148 0h4.588v8.981zm-4.587-7.51c-1.665 0-3.019 1.355-3.019 3.019s1.354 3.02 3.019 3.02h3.117V1.471H8.148zm4.587 15.019H8.148c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h4.588v8.98zM8.148 8.981c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h3.117V8.981H8.148zM8.172 24c-2.489 0-4.515-2.014-4.515-4.49s2.014-4.49 4.49-4.49h4.588v4.441c0 2.503-2.047 4.539-4.563 4.539zm-.024-7.51a3.023 3.023 0 0 0-3.019 3.019c0 1.665 1.365 3.019 3.044 3.019 1.705 0 3.093-1.376 3.093-3.068v-2.97H8.148zm7.704 0h-.098c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h.098c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.49-4.49 4.49zm-.097-7.509c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h.098c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-.098z",
+  chrome: "M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z",
+  node: "M11.998,24c-0.321,0-0.641-0.084-0.922-0.247l-2.936-1.737c-0.438-0.245-0.224-0.332-0.08-0.383 c0.585-0.203,0.703-0.25,1.328-0.604c0.065-0.037,0.151-0.023,0.218,0.017l2.256,1.339c0.082,0.045,0.197,0.045,0.272,0l8.795-5.076 c0.082-0.047,0.134-0.141,0.134-0.238V6.921c0-0.099-0.053-0.192-0.137-0.242l-8.791-5.072c-0.081-0.047-0.189-0.047-0.271,0 L3.075,6.68C2.99,6.729,2.936,6.825,2.936,6.921v10.15c0,0.097,0.054,0.189,0.139,0.235l2.409,1.392 c1.307,0.654,2.108-0.116,2.108-0.89V7.787c0-0.142,0.114-0.253,0.256-0.253h1.115c0.139,0,0.255,0.112,0.255,0.253v10.021 c0,1.745-0.95,2.745-2.604,2.745c-0.508,0-0.909,0-2.026-0.551L2.28,18.675c-0.57-0.329-0.922-0.945-0.922-1.604V6.921 c0-0.659,0.353-1.275,0.922-1.603l8.795-5.082c0.557-0.315,1.296-0.315,1.848,0l8.794,5.082c0.57,0.329,0.924,0.944,0.924,1.603 v10.15c0,0.659-0.354,1.273-0.924,1.604l-8.794,5.078C12.643,23.916,12.324,24,11.998,24z M19.099,13.993 c0-1.9-1.284-2.406-3.987-2.763c-2.731-0.361-3.009-0.548-3.009-1.187c0-0.528,0.235-1.233,2.258-1.233 c1.807,0,2.473,0.389,2.747,1.607c0.024,0.115,0.129,0.199,0.247,0.199h1.141c0.071,0,0.138-0.031,0.186-0.081 c0.048-0.054,0.074-0.123,0.067-0.196c-0.177-2.098-1.571-3.076-4.388-3.076c-2.508,0-4.004,1.058-4.004,2.833 c0,1.925,1.488,2.457,3.895,2.695c2.88,0.282,3.103,0.703,3.103,1.269c0,0.983-0.789,1.402-2.642,1.402 c-2.327,0-2.839-0.584-3.011-1.742c-0.02-0.124-0.126-0.215-0.253-0.215h-1.137c-0.141,0-0.254,0.112-0.254,0.253 c0,1.482,0.806,3.248,4.655,3.248C17.501,17.007,19.099,15.91,19.099,13.993z",
+  aws: "M6.763 10.036c0 .296.032.535.088.71.064.176.144.368.256.576.04.063.056.127.056.183 0 .08-.048.16-.152.24l-.503.335a.383.383 0 0 1-.208.072c-.08 0-.16-.04-.239-.112a2.47 2.47 0 0 1-.287-.375 6.18 6.18 0 0 1-.248-.471c-.622.734-1.405 1.101-2.347 1.101-.67 0-1.205-.191-1.596-.574-.391-.384-.59-.894-.59-1.533 0-.678.239-1.23.726-1.644.487-.415 1.133-.623 1.955-.623.272 0 .551.024.846.064.296.04.6.104.918.176v-.583c0-.607-.127-1.03-.375-1.277-.255-.248-.686-.367-1.3-.367-.28 0-.568.031-.863.103-.295.072-.583.16-.862.272a2.287 2.287 0 0 1-.28.104.488.488 0 0 1-.127.023c-.112 0-.168-.08-.168-.247v-.391c0-.128.016-.224.056-.28a.597.597 0 0 1 .224-.167c.279-.144.614-.264 1.005-.36a4.84 4.84 0 0 1 1.246-.151c.95 0 1.644.216 2.091.647.439.43.662 1.085.662 1.963v2.586zm-3.24 1.214c.263 0 .534-.048.822-.144.287-.096.543-.271.758-.51.128-.152.224-.32.272-.512.047-.191.08-.423.08-.694v-.335a6.66 6.66 0 0 0-.735-.136 6.02 6.02 0 0 0-.75-.048c-.535 0-.926.104-1.19.32-.263.215-.39.518-.39.917 0 .375.095.655.295.846.191.2.47.296.838.296zm6.41.862c-.144 0-.24-.024-.304-.08-.064-.048-.12-.16-.168-.311L7.586 5.55a1.398 1.398 0 0 1-.072-.32c0-.128.064-.2.191-.2h.783c.151 0 .255.025.31.08.065.048.113.16.16.312l1.342 5.284 1.245-5.284c.04-.16.088-.264.151-.312a.549.549 0 0 1 .32-.08h.638c.152 0 .256.025.32.08.063.048.12.16.151.312l1.261 5.348 1.381-5.348c.048-.16.104-.264.16-.312a.52.52 0 0 1 .311-.08h.743c.127 0 .2.065.2.2 0 .04-.009.08-.017.128a1.137 1.137 0 0 1-.056.2l-1.923 6.17c-.048.16-.104.263-.168.311a.51.51 0 0 1-.303.08h-.687c-.151 0-.255-.024-.32-.08-.063-.056-.119-.16-.15-.32l-1.238-5.148-1.23 5.14c-.04.16-.087.264-.15.32-.065.056-.177.08-.32.08zm10.256.215c-.415 0-.83-.048-1.229-.143-.399-.096-.71-.2-.918-.32-.128-.071-.215-.151-.247-.223a.563.563 0 0 1-.048-.224v-.407c0-.167.064-.247.183-.247.048 0 .096.008.144.024.048.016.12.048.2.08.271.12.566.215.878.279.319.064.63.096.95.096.502 0 .894-.088 1.165-.264a.86.86 0 0 0 .415-.758.777.777 0 0 0-.215-.559c-.144-.151-.416-.287-.807-.415l-1.157-.36c-.583-.183-1.014-.454-1.277-.813a1.902 1.902 0 0 1-.4-1.158c0-.335.073-.63.216-.886.144-.255.335-.479.575-.654.24-.184.51-.32.83-.415.32-.096.655-.136 1.006-.136.175 0 .359.008.535.032.183.024.35.056.518.088.16.04.312.08.455.127.144.048.256.096.336.144a.69.69 0 0 1 .24.2.43.43 0 0 1 .071.263v.375c0 .168-.064.256-.184.256a.83.83 0 0 1-.303-.096 3.652 3.652 0 0 0-1.532-.311c-.455 0-.815.071-1.062.223-.248.152-.375.383-.375.71 0 .224.08.416.24.567.159.152.454.304.877.44l1.134.358c.574.184.99.44 1.237.767.247.327.367.702.367 1.117 0 .343-.072.655-.207.926-.144.272-.336.511-.583.703-.248.2-.543.343-.886.447-.36.111-.734.167-1.142.167zM21.698 16.207c-2.626 1.94-6.442 2.969-9.722 2.969-4.598 0-8.74-1.7-11.87-4.526-.247-.223-.024-.527.272-.351 3.384 1.963 7.559 3.153 11.877 3.153 2.914 0 6.114-.607 9.06-1.852.439-.2.814.287.383.607zM22.792 14.961c-.336-.43-2.22-.207-3.074-.103-.255.032-.295-.192-.063-.36 1.5-1.053 3.967-.75 4.254-.399.287.36-.08 2.826-1.485 4.007-.215.184-.423.088-.327-.151.32-.79 1.03-2.57.695-2.994z",
+  heroui: "M6.353 0h11.294A6.353 6.353 0 0 1 24 6.353v11.294A6.353 6.353 0 0 1 17.647 24H6.353A6.353 6.353 0 0 1 0 17.647V6.353A6.353 6.353 0 0 1 6.353 0Zm7.755 6.913h-.933v6.702a2.88 2.88 0 0 1-.362 1.45c-.24.424-.596.77-1.025 1-.443.244-.96.365-1.553.365-.592 0-1.108-.121-1.55-.364a2.603 2.603 0 0 1-1.024-1 2.865 2.865 0 0 1-.365-1.45V6.912h-.933v6.767a3.558 3.558 0 0 0 .489 1.862c.327.547.798.994 1.362 1.292.582.316 1.256.474 2.021.474.769 0 1.444-.157 2.024-.471a3.473 3.473 0 0 0 1.36-1.293c.33-.565.5-1.21.49-1.864V6.913Zm3.648 10.22V6.914h-.933v10.22h.933Z",
+  notion: "M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z",
+  github: "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12",
+  slack: "M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z",
+  stripe: "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z",
+  supabase: "M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z",
+  vercel: "m12 1.608 12 20.784H0Z",
+  sentry: "M13.91 2.505c-.873-1.448-2.972-1.448-3.844 0L6.904 7.92a15.478 15.478 0 0 1 8.53 12.811h-2.221A13.301 13.301 0 0 0 5.784 9.814l-2.926 5.06a7.65 7.65 0 0 1 4.435 5.848H2.194a.365.365 0 0 1-.298-.534l1.413-2.402a5.16 5.16 0 0 0-1.614-.913L.296 19.275a2.182 2.182 0 0 0 .812 2.999 2.24 2.24 0 0 0 1.086.288h6.983a9.322 9.322 0 0 0-3.845-8.318l1.11-1.922a11.47 11.47 0 0 1 4.95 10.24h5.915a17.242 17.242 0 0 0-7.885-15.28l2.244-3.845a.37.37 0 0 1 .504-.13c.255.14 9.75 16.708 9.928 16.9a.365.365 0 0 1-.327.543h-2.287c.029.612.029 1.223 0 1.831h2.297a2.206 2.206 0 0 0 1.922-3.31z",
+  playwright: "M23.996 7.462c-.056.837-.257 2.135-.716 3.85-.995 3.715-4.27 10.874-10.42 9.227-6.15-1.65-5.407-9.487-4.412-13.201.46-1.716.934-2.94 1.305-3.694.42-.853.846-.289 1.815.523.684.573 2.41 1.791 5.011 2.488 2.601.697 4.706.506 5.583.352 1.245-.219 1.897-.494 1.834.455Zm-9.807 3.863s-.127-1.819-1.773-2.286c-1.644-.467-2.613 1.04-2.613 1.04Zm4.058 4.539-7.769-2.172s.446 2.306 3.338 3.153c2.862.836 4.43-.98 4.43-.981Zm2.701-2.51s-.13-1.818-1.773-2.286c-1.644-.469-2.612 1.038-2.612 1.038ZM8.57 18.23c-4.749 1.279-7.261-4.224-8.021-7.08C.197 9.831.044 8.832.003 8.188c-.047-.73.455-.52 1.415-.354.677.118 2.3.261 4.308-.28a11.28 11.28 0 0 0 2.41-.956c-.058.197-.114.4-.17.61-.433 1.618-.827 4.055-.632 6.426-1.976.732-2.267 2.423-2.267 2.423l2.524-.715c.227 1.002.6 1.987 1.15 2.838a5.914 5.914 0 0 1-.171.049Zm-4.188-6.298c1.265-.333 1.363-1.631 1.363-1.631l-3.374.888s.745 1.076 2.01.743Z",
+};
+const APP_REGRA = [[/linear/i, "linear"], [/figma/i, "figma"], [/chrome|devtools/i, "chrome"], [/node/i, "node"], [/aws|amazon/i, "aws"], [/heroui|nextui/i, "heroui"], [/notion/i, "notion"], [/github/i, "github"], [/slack/i, "slack"], [/stripe/i, "stripe"], [/supabase/i, "supabase"], [/vercel/i, "vercel"], [/sentry/i, "sentry"], [/playwright/i, "playwright"]];
+const appSelo = (nome) => { const m = APP_REGRA.find(([r]) => r.test(nome)); return m ? `<span class="selo de-app" title="${esc(nome)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${APP_MARCA[m[1]]}"/></svg></span>` : `<span class="selo">${esc(nome[0])}</span>`; };
 let toolsInfo = null;
 function paintApps(t) {
   toolsInfo = t;
   const mcp = [...new Set([...t.mcp.claude, ...t.mcp.codex])], skills = Object.values(t.skills).reduce((n, x) => n + x, 0);
-  $("appsPile").innerHTML = mcp.slice(0, 4).map((m) => `<span class="selo">${esc(m[0])}</span>`).join("");
+  $("appsPile").innerHTML = mcp.slice(0, 4).map(appSelo).join("");
   $("appsText").textContent = mcp.length ? plural(mcp.length, "app conectado", "apps conectados") : skills ? plural(skills, "skill instalada", "skills instaladas") : "Apps conectados";
   if (!$("appsDlg").open) return;
   const where = (m) => [t.mcp.claude.includes(m) && "Claude", t.mcp.codex.includes(m) && "Codex"].filter(Boolean).join(" e ");
   $("appsBody").innerHTML = `<span class="label" style="padding-bottom:8px">Servidores MCP</span>`
-    + (mcp.length ? `<div class="apps-g">${mcp.map((m) => `<div class="app-c"><span class="selo">${esc(m[0])}</span><span><b>${esc(m)}</b><span>${where(m)}</span></span></div>`).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
+    + (mcp.length ? `<div class="apps-g">${mcp.map((m) => `<div class="app-c">${appSelo(m)}<span><b>${esc(m)}</b><span>${where(m)}</span></span></div>`).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
     + `<span class="label" style="padding:18px 0 8px">Skills</span><div class="calm">${Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${esc(prov(p)?.name || p)}: ${n}`).join(" · ") || "Nenhuma skill instalada na conta padrão."}</div>`
     + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button></div>`
     + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div>`;
@@ -1272,10 +1312,69 @@ $("needList").onclick = async (e) => {
 
 // ---------- campo de pedido ----------
 function setCwd(dir) { $("cwd").value = dir; store.set("cwd", dir); paintComposer(); renderThreads(); peek(); }
-$("cwd").onchange = () => setCwd(cwd());
-$("cwd").onkeydown = (e) => { if (e.key === "Enter") { setCwd(cwd()); closePops(); $("prompt").focus(); } };
+// escolher a pasta: busca em cima, recentes e as pastas de projetos embaixo. "Procurar no computador" abre a janela do
+// sistema no app de Mac; no navegador, e sempre que a busca vira um caminho (~/ ou /), a lista navega pelas pastas do computador.
+let DIRS = [], dirAtiva = 0;
+const LS = new Map(); // subpastas já lidas, por pasta
+const temJanelaDePasta = () => !!window.webkit?.messageHandlers?.pasta;
+const pastasRecentes = () => [...new Set([...S.convos].sort((a, b) => (b.at || b.startedAt || 0) - (a.at || a.startedAt || 0)).map((c) => c.cwd).filter((d) => d && !d.includes("/.revoada/worktrees/")))].slice(0, 5); // cópia isolada de conversa não é projeto
+const pai = (d) => d.replace(/\/[^/]*$/, "") || "/";
+const junta = (d, nome) => (d === "/" ? "" : d) + "/" + nome;
+function leSubpastas(dir) {
+  if (LS.has(dir)) return LS.get(dir);
+  LS.set(dir, null);
+  api("ls?dir=" + encodeURIComponent(dir)).then((r) => { LS.set(dir, r); if ($("popDir").classList.contains("on")) paintDirs(); }).catch(() => LS.delete(dir));
+  return null;
+}
+function navegaPara(dir) { $("dirBusca").value = (short(dir) === "/" ? "" : short(dir)) + "/"; dirAtiva = 0; paintDirs(); $("dirBusca").focus(); }
+function paintDirs() {
+  const q = $("dirBusca").value.trim(), baixo = q.toLowerCase(), atual = cwd();
+  const linha = (d, rotulo, navega) => `<button class="opt ${!navega && d === atual ? "on" : ""}" role="option" aria-selected="${!navega && d === atual}" ${navega ? "data-entra" : "data-dir"}="${esc(d)}">${navega === "sobe" ? `<span class="volta">${ic("seta")}</span>` : ic("pasta")}<b>${esc(rotulo || base(d))}</b><span class="val">${navega === "entra" ? "" : esc(short(d))}</span>${navega === "entra" ? `<span class="ir">${ic("seta")}</span>` : navega ? "" : `<span class="visto">${ic("certo")}</span>`}</button>`;
+  let html = "";
+  if (/^[~/]/.test(q)) {
+    // caminho: mostra a pasta digitada por dentro; enquanto o nome está pela metade, a pasta de cima filtrada por ele
+    const caminho = q.replace(/^~(?=\/|$)/, S.home).replace(/(.)\/+$/, "$1"), inteira = q.endsWith("/") || leSubpastas(caminho)?.exists;
+    const dir = inteira ? caminho : pai(caminho), prefixo = inteira ? "" : base(caminho).toLowerCase(), l = leSubpastas(dir);
+    if (!l) html = `<div class="vazio">Lendo a pasta…</div>`;
+    else if (!l.exists) html = `<div class="vazio">Essa pasta não existe neste computador.</div>` + (dir !== "/" ? linha(pai(dir), "Subir para " + (base(pai(dir)) || "/"), "sobe") : "");
+    else {
+      const subs = l.subs.filter((n) => n.toLowerCase().startsWith(prefixo));
+      html = linha(dir, "Usar esta pasta") + (dir !== "/" ? linha(l.parent, "Subir para " + base(l.parent), "sobe") : "")
+        + (subs.length ? `<span class="label">Dentro de ${esc(short(dir))}</span>${subs.map((n) => linha(junta(dir, n), n, "entra")).join("")}` : `<div class="vazio">${prefixo ? "Nenhuma pasta começa com esse nome aqui." : "Sem pastas aqui dentro."}</div>`);
+    }
+  } else {
+    const bate = (d) => !baixo || short(d).toLowerCase().includes(baixo);
+    const recentes = q ? [] : pastasRecentes(), resto = DIRS.filter((d) => bate(d) && !recentes.includes(d)).slice(0, 60);
+    html = (recentes.length ? `<span class="label">Recentes</span>${recentes.map((d) => linha(d)).join("")}` : "")
+      + (resto.length ? `<span class="label">${q ? "Pastas" : "Em " + esc(short(S.projects))}</span>${resto.map((d) => linha(d)).join("")}` : "")
+      || `<div class="vazio">Nenhuma pasta de projeto com esse nome. Use "Procurar no computador" para achar em outro lugar.</div>`;
+  }
+  $("dirLista").innerHTML = html;
+  $("dirPe").innerHTML = `<button class="opt" id="dirOutra">${ic("busca")}Procurar no computador</button>`;
+  const linhas = [...$("dirLista").querySelectorAll("[data-dir], [data-entra]")];
+  dirAtiva = Math.max(0, Math.min(dirAtiva, linhas.length - 1));
+  linhas.forEach((b, i) => b.classList.toggle("ativa", i === dirAtiva));
+  linhas[dirAtiva]?.scrollIntoView({ block: "nearest" });
+}
+function escolheDir(dir) { setCwd(dir); closePops(); $("prompt").focus(); }
+const ativaDir = (b) => (b.dataset.entra !== undefined ? navegaPara(b.dataset.entra) : escolheDir(b.dataset.dir));
+$("dirBusca").oninput = () => { dirAtiva = 0; paintDirs(); };
+$("dirBusca").onkeydown = (e) => {
+  const linhas = $("dirLista").querySelectorAll("[data-dir], [data-entra]");
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); dirAtiva = (dirAtiva + (e.key === "ArrowDown" ? 1 : -1) + linhas.length) % Math.max(1, linhas.length); paintDirs(); }
+  if (e.key === "Enter") { e.preventDefault(); const b = linhas[dirAtiva]; if (b) ativaDir(b); }
+  if (e.key === "Escape") { closePops(); $("prompt").focus(); }
+};
+$("popDir").onclick = (e) => {
+  // a lista é refeita a cada passo: sem segurar o clique aqui, o botão clicado some da página e o "clique fora" fecharia a janelinha
+  e.stopPropagation();
+  const b = e.target.closest("[data-dir], [data-entra]"); if (b) return ativaDir(b);
+  if (!e.target.closest("#dirOutra")) return;
+  if (temJanelaDePasta()) { closePops(); return window.webkit.messageHandlers.pasta.postMessage(cwd()); }
+  navegaPara(cwd() || S.home);
+};
 function closePops() { document.querySelectorAll(".pop").forEach((p) => p.classList.remove("on")); }
-function togglePop(id) { const p = $(id), was = p.classList.contains("on"); closePops(); if (!was) { p.classList.add("on"); p.querySelector("input")?.focus(); } }
+function togglePop(id) { const p = $(id), was = p.classList.contains("on"); closePops(); if (!was) { p.classList.add("on"); if (id === "popDir") { $("dirBusca").value = ""; dirAtiva = 0; paintDirs(); } p.querySelector("input")?.focus(); } }
 $("dirChip").onclick = $("heroDir").onclick = (e) => { e.stopPropagation(); togglePop("popDir"); };
 $("heroCards").onclick = (e) => {
   const b = e.target.closest("[data-hero]"); if (!b) return;
@@ -1342,7 +1441,11 @@ function paintSend() {
 }
 function paintTargets() {
   const ts = new Set(targets());
-  $("popTarget").innerHTML = `<span class="label">Quem responde</span>` + S.providers.filter((p) => p.installed).map((p) => {
+  // atalho para chamar todo mundo: o rodízio de cada provedor que tem conta pronta, todos no mesmo pedido
+  const todos = S.providers.filter((p) => p.installed && S.accounts.some((a) => a.provider === p.id && ready(a))).map((p) => "pool:" + p.id), todosOn = todos.length > 1 && todos.length === ts.size && todos.every((t) => ts.has(t));
+  $("popTarget").innerHTML = `<span class="label">Quem responde</span>`
+    + (view.type !== "chat" && todos.length > 1 ? `<button class="opt ${todosOn ? "on" : ""}" data-todos><span class="ck">${todosOn ? ICON.check : ""}</span>Todos os agentes<small>${todos.length} provedores no mesmo pedido, lado a lado</small></button>` : "")
+    + S.providers.filter((p) => p.installed).map((p) => {
     const mine = S.accounts.filter((a) => a.provider === p.id), n = mine.filter(ready).length;
     const opt = (v, name, note, ok) => `<button class="opt ${ts.has(v) ? "on" : ""}" data-t="${v}" ${ok ? "" : "disabled"}><span class="ck">${ts.has(v) ? ICON.check : ""}</span>${esc(name)}<small>${esc(note)}</small></button>`;
     return opt("pool:" + p.id, p.name, n ? `rodízio · começa pela mais folgada de ${n}` : "nenhuma conta pronta", n)
@@ -1351,6 +1454,13 @@ function paintTargets() {
 }
 $("popTarget").onclick = (e) => {
   e.stopPropagation();
+  const tudo = e.target.closest("[data-todos]");
+  if (tudo) {
+    const todos = S.providers.filter((p) => p.installed && S.accounts.some((a) => a.provider === p.id && ready(a))).map((p) => "pool:" + p.id);
+    const ja = tudo.classList.contains("on");
+    picked.clear(); (ja ? todos.slice(0, 1) : todos).forEach((t) => picked.add(t)); store.set("targets", JSON.stringify([...picked]));
+    paintTargets(); return paintComposer();
+  }
   const b = e.target.closest("[data-t]"); if (!b || b.disabled) return;
   if (view.type === "chat") { chatTarget = b.dataset.t; paintTargets(); paintComposer(); return closePops(); }
   const cur = new Set(targets()); cur.has(b.dataset.t) ? cur.delete(b.dataset.t) : cur.add(b.dataset.t);
@@ -1993,6 +2103,7 @@ async function loadChat(force) {
 }
 
 // ---------- conversa ----------
+const loginsVistos = new Set(); // sessões de login que a pessoa acompanhou abertas: só essas voltam sozinhas para Contas
 function renderThread() {
   const isRun = view.type === "run";
   $("stage").style.display = isRun ? "none" : "flex"; $("runView").style.display = isRun ? "block" : "none";
@@ -2001,17 +2112,22 @@ function renderThread() {
   const a = acc(s.accountId);
   $("thTitle").textContent = s.kind === "login" ? `Login · ${accName(a)}` : s.title;
   const back = view.from && S.convos.some((c) => c.id === view.from) ? view.from : "";
-  $("thTabs").innerHTML = (back ? `<button data-back="${esc(back)}">Conversa</button>` : "") + `<button aria-current="true">Terminal</button>`;
+  const login = s.kind === "login";
+  $("thTabs").innerHTML = (login ? `<button data-contas>Contas</button>` : back ? `<button data-back="${esc(back)}">Conversa</button>` : "") + `<button aria-current="true">Terminal</button>`;
   $("thSub").innerHTML = `${esc(accName(a))} · ${esc(short(s.cwd))}${s.brain?.length ? ` · <span class="b" title="${esc(s.brain.join("\n"))}">${plural(s.brain.length, "nota", "notas")} do cérebro</span>` : ""}${s.alive ? "" : " · encerrada"}${s.limitHit ? " · bateu no limite" : ""}`;
-  $("thActs").innerHTML = s.alive ? `<button class="link" data-end="${s.id}">Encerrar</button>` : `<button class="link" data-again="${s.accountId}|${esc(s.cwd)}">Nova sessão nesta conta</button>`;
+  // login é um desvio a partir de Contas: a volta fica sempre à mão, e quando o login dá certo a tela volta sozinha
+  $("thActs").innerHTML = (login ? `<button class="link" data-contas>Voltar para Contas</button>` : "") + (s.alive ? `<button class="link" data-end="${s.id}">${login ? "Cancelar login" : "Encerrar"}</button>` : `<button class="link" data-again="${s.accountId}|${esc(s.cwd)}">Nova sessão nesta conta</button>`);
+  if (login && s.alive) loginsVistos.add(s.id);
+  if (login && !s.alive && a?.status.ok && loginsVistos.delete(s.id)) setTimeout(() => { if (view.type === "session" && view.id === s.id) { go({ type: "accounts" }); toast(`${accName(a)} está logada.`); } }, 900);
   if (!panes.has(s.id)) mountPane(s);
   for (const [id, p] of panes) p.el.classList.toggle("show", id === s.id);
   const p = panes.get(s.id);
   requestAnimationFrame(() => { try { p.fit.fit(); } catch {} if (renderThread.last !== s.id) { p.term.focus(); renderThread.last = s.id; } });
 }
-$("thTabs").onclick = (e) => { const b = e.target.closest("[data-back]"); if (b) go({ type: "chat", id: b.dataset.back }); };
+$("thTabs").onclick = (e) => { if (e.target.closest("[data-contas]")) return go({ type: "accounts" }); const b = e.target.closest("[data-back]"); if (b) go({ type: "chat", id: b.dataset.back }); };
 $("thActs").onclick = async (e) => {
   const b = e.target.closest("button"); if (!b) return;
+  if ("contas" in b.dataset) return go({ type: "accounts" });
   if (b.dataset.end) { if (confirm("Encerrar esta sessão? O agente para na hora. A conversa fica no histórico.")) { await api("sessions/" + b.dataset.end, "DELETE"); setTimeout(refresh, 400); } }
   if (b.dataset.again) { const [accountId, dir] = b.dataset.again.split("|"); const { id } = await api("sessions", "POST", { accountId, kind: "chat", cwd: dir }); await refresh(); go({ type: "session", id }); }
   if (b.dataset.cancel) { await api(`runs/${b.dataset.cancel}/cancel`, "POST", {}); loadRun(); }
@@ -2058,8 +2174,11 @@ async function loadRun() {
 
 // ---------- contas ----------
 const WINDOW = { five_hour: "5 horas", seven_day: "7 dias" };
+// janela que o provedor manda com nome próprio (seven_day_opus, seven_day_overage_included): nome curto que cabe na coluna
+const WINDOW_EXTRA = { overage_included: "extra" };
+const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
 const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
-const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span>${WINDOW[u.key] || esc(windowName(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
+const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
 function renderAccounts() {
   const A = S.accounts.filter((a) => prov(a.provider).installed), lim = A.filter((a) => a.limit);
   $("accLead").textContent = `${plural(A.filter(ready).length, "conta pronta", "contas prontas")} de ${A.length}.` + (lim.length ? ` ${plural(lim.length, "bateu", "bateram")} no limite, a primeira volta às ${hm(Math.min(...lim.map((a) => a.limit.until)))}.` : "") + " Cada conta tem login próprio, feito pelo CLI oficial do provedor.";
@@ -2305,10 +2424,148 @@ $("dDelete").onclick = async () => {
 };
 
 fetch("/logo.svg").then((r) => r.text()).then((svg) => document.querySelectorAll("[data-logo]").forEach((el) => (el.innerHTML = svg)));
-api("dirs").then((d) => ($("dirs").innerHTML = d.map((x) => `<option value="${esc(x)}">`).join("")));
+api("dirs").then((d) => { DIRS = d; });
 // primeira vez: o painel abre nos primeiros passos
 refresh().then(() => { go(!S.settings.onboarded && view.type === "home" ? { type: "start" } : S.settings.onboarded && view.type === "start" ? { type: "home" } : view); refresh(true); });
 setInterval(() => document.visibilityState === "visible" && refresh(), 4000);
+
+// ---------- campo de grão da tela inicial ----------
+// O mesmo fundo da página do Revoada (site/main.js): fios de grão que ondulam devagar, pintados em WebGL em duas passadas.
+// A primeira desenha os fios numa textura pequena; a segunda junta os fios com um grão de 256 pontos e pinta a tela.
+// Sem WebGL fica o grão parado em CSS.
+(() => {
+  const fundo = document.getElementById('v-home');
+  const tela = fundo?.querySelector('canvas.campo');
+  if (!tela) return;
+  let gl = null, quadro = 0;
+  const desiste = () => { cancelAnimationFrame(quadro); tela.remove(); fundo.classList.remove('gl'); };
+  try { gl = tela.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' }); } catch { /* sem WebGL */ }
+  if (!gl) return desiste();
+
+  const PRECISAO = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n';
+  const VERTICE = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const FIOS = PRECISAO + `uniform vec2 uSize;uniform float uAr,uTime,uIn;uniform vec3 uPtr;
+vec2 h22(vec2 p){vec3 q=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973));q+=dot(q,q.yzx+33.33);return fract((q.xx+q.yz)*q.zy)*2.-1.;}
+float gn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(dot(h22(i),f),dot(h22(i+vec2(1.,0.)),f-vec2(1.,0.)),u.x),mix(dot(h22(i+vec2(0.,1.)),f-vec2(0.,1.)),dot(h22(i+vec2(1.,1.)),f-vec2(1.,1.)),u.x),u.y);}
+float fbm3(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+float fbm5(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uSize*vec2(uAr,1.);float t=uTime;
+  vec2 p=vec2(uv.x/1.03,uv.y/.154);
+  p.y+=.38*sin(uv.x*2.4-t*.30)+.18*sin(uv.x*5.1-t*.45+1.7);
+  p.x-=t*.03;
+  vec2 q=p*vec2(.55,.4);
+  vec2 w=vec2(fbm3(q+vec2(0.,t*.045)),fbm3(q+vec2(4.1,1.3-t*.037)));
+  float a=clamp(.35+1.2*fbm5(p+w*vec2(1.1,.8)),0.,1.);
+  vec2 d=uv-vec2(.5*uAr,.5),e=uv-vec2(uPtr.x*uAr,uPtr.y),l=(uv-vec2(.8*uAr,1.))/vec2(max(uAr,1.)*.63,.7);
+  float m=(1.+.32*uPtr.z*exp(-dot(e,e)/.035))*(1.-.5*smoothstep(.45,1.25,length(d/vec2(max(uAr,1.)*.62,.62))))*uIn*uIn*(3.-2.*uIn);
+  gl_FragColor=vec4(a,m/1.5,exp(-dot(l,l)),1.);}`;
+  const PINTA = PRECISAO + `uniform sampler2D uWisps,uGrain;uniform vec2 uRes;uniform float uDpr,uForca,uLuz;uniform vec3 uBase,uFio;
+void main(){
+  vec4 w=texture2D(uWisps,gl_FragCoord.xy/uRes);
+  float b=texture2D(uGrain,gl_FragCoord.xy/(uDpr*256.)).r;
+  float al=min(1.,clamp(1.32*(1.1*w.r*b+.45*w.r)-.5,0.,1.)*w.g*1.5)*uForca;
+  gl_FragColor=vec4(mix(uBase,uFio,al)+uLuz*w.b*uForca,1.);}`;
+
+  const programa = (fragmento) => {
+    const prog = gl.createProgram();
+    for (const [tipo, fonte] of [[gl.VERTEX_SHADER, VERTICE], [gl.FRAGMENT_SHADER, fragmento]]) {
+      const sh = gl.createShader(tipo);
+      gl.shaderSource(sh, fonte); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      gl.attachShader(prog, sh);
+    }
+    gl.bindAttribLocation(prog, 0, 'p'); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const u = {};
+    for (let i = 0; i < gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS); i++) { const nome = gl.getActiveUniform(prog, i).name; u[nome] = gl.getUniformLocation(prog, nome); }
+    return { prog, u };
+  };
+  let fios, pinta;
+  try { fios = programa(FIOS); pinta = programa(PINTA); } catch { return desiste(); }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const textura = (borda, filtro) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtro); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filtro);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, borda); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, borda);
+    return t;
+  };
+
+  // o grão: ruído com semente fixa, cada ponto misturado com os três de baixo, o que puxa o fio na vertical
+  const LADO = 256, grao = new Uint8Array(LADO * LADO);
+  let semente = 5;
+  const sorteia = () => { semente = semente + 1831565813 | 0; let v = Math.imul(semente ^ semente >>> 15, 1 | semente); v = v + Math.imul(v ^ v >>> 7, 61 | v) ^ v; return ((v ^ v >>> 14) >>> 0) / 4294967296; };
+  const fino = Float32Array.from({ length: LADO * LADO }, sorteia), largo = Float32Array.from({ length: LADO * LADO }, sorteia);
+  for (let y = 0; y < LADO; y++) for (let x = 0; x < LADO; x++) {
+    let fio = 0;
+    for (let k = 0; k < 4; k++) fio += fino[(y + k) % LADO * LADO + x];
+    const v = 0.5 + 0.7 * (fio / 4 - 0.5) + 0.2 * ((largo[y * LADO + x] + largo[(y + 1) % LADO * LADO + x]) / 2 - 0.5);
+    grao[y * LADO + x] = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  }
+  const texGrao = textura(gl.REPEAT, gl.NEAREST);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, LADO, LADO, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, grao);
+
+  let placa = gl.getParameter(gl.RENDERER);
+  if (placa === 'WebKit WebGL') { const ext = gl.getExtension('WEBGL_debug_renderer_info'); if (ext) placa = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL); }
+  const fraca = /swiftshader|llvmpipe|software|basic render/i.test(placa);
+  const texFios = textura(gl.CLAMP_TO_EDGE, gl.LINEAR), quadroFios = gl.createFramebuffer();
+  let escala = 1, larg = 1, alt = 1, fiosL = 2, fiosA = 2;
+  const mede = () => {
+    larg = tela.clientWidth || fundo.clientWidth || innerWidth; alt = tela.clientHeight || fundo.clientHeight || innerHeight;
+    escala = Math.min(fraca ? 0.6 : 1, Math.sqrt(4e6 / (larg * alt)));
+    tela.width = Math.max(1, Math.round(larg * escala)); tela.height = Math.max(1, Math.round(alt * escala));
+    fiosL = Math.max(2, Math.ceil(larg / 6)); fiosA = Math.max(2, Math.ceil(alt / 3));
+    gl.bindTexture(gl.TEXTURE_2D, texFios);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fiosL, fiosA, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texFios, 0);
+    return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  };
+  if (!mede()) return desiste();
+  fundo.classList.add('gl');
+
+  const mouse = { x: 0.5, y: 0.5, on: 0, tx: 0.5, ty: 0.5, ton: 0 };
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse' || !tela.clientWidth) return; const r = tela.getBoundingClientRect(); mouse.tx = (e.clientX - r.left) / r.width; mouse.ty = 1 - (e.clientY - r.top) / r.height; mouse.ton = mouse.tx >= 0 && mouse.tx <= 1 && mouse.ty >= 0 && mouse.ty <= 1 ? 1 : 0; }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { mouse.ton = 0; });
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)');
+  // mais fraco que na capa da página: aqui tem título, cartões e a caixa de pedido por cima. No tema claro os fios escurecem o papel em vez de clarear o grafite
+  const TEMPO_INICIAL = 40, comeco = performance.now();
+  const TEMAS = { dark: { base: [0.0667, 0.0667, 0.0706], fio: [0.5, 0.5, 0.51], luz: 0.045, forca: 0.62 }, light: { base: [0.9843, 0.9843, 0.9804], fio: [0.66, 0.66, 0.68], luz: -0.02, forca: 0.5 } };
+  const tema = () => TEMAS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'];
+  const desenha = () => {
+    if (tela.clientWidth !== larg || tela.clientHeight !== alt) { if (!mede()) return desiste(); }
+    const c = tema();
+    const t = (performance.now() - comeco) / 1000, vivo = !calmo.matches;
+    mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05; mouse.on += (mouse.ton - mouse.on) * 0.03;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios); gl.viewport(0, 0, fiosL, fiosA); gl.useProgram(fios.prog);
+    gl.uniform2f(fios.u.uSize, fiosL, fiosA); gl.uniform1f(fios.u.uAr, larg / alt);
+    gl.uniform1f(fios.u.uTime, vivo ? TEMPO_INICIAL + t : TEMPO_INICIAL);
+    gl.uniform1f(fios.u.uIn, vivo ? Math.min(1, Math.max(0, t - 0.3) / 3.2) : 1);
+    gl.uniform3f(fios.u.uPtr, mouse.x, mouse.y, vivo ? mouse.on : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, tela.width, tela.height); gl.useProgram(pinta.prog);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texFios); gl.uniform1i(pinta.u.uWisps, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texGrao); gl.uniform1i(pinta.u.uGrain, 1);
+    gl.uniform2f(pinta.u.uRes, tela.width, tela.height); gl.uniform1f(pinta.u.uDpr, escala); gl.uniform1f(pinta.u.uForca, c.forca); gl.uniform1f(pinta.u.uLuz, c.luz); gl.uniform3fv(pinta.u.uBase, c.base); gl.uniform3fv(pinta.u.uFio, c.fio);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  const PASSO_MS = fraca ? 49 : 32;
+  let ultimo = -1e9;
+  // só pinta com a tela inicial à vista: em conversa, Contas ou com a janela escondida o campo não gasta nada
+  const laco = (agora) => { quadro = requestAnimationFrame(laco); if (agora - ultimo < PASSO_MS || !tela.clientWidth || document.hidden) return; ultimo = agora; desenha(); };
+  const liga = () => { cancelAnimationFrame(quadro); if (calmo.matches) desenha(); else quadro = requestAnimationFrame(laco); };
+  // com menos movimento fica um quadro parado, repintado quando a tela muda de tamanho, de tema ou volta a aparecer
+  new ResizeObserver(() => { if (calmo.matches && tela.clientWidth) desenha(); }).observe(tela);
+  new MutationObserver(() => { if (calmo.matches && tela.clientWidth) desenha(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  calmo.addEventListener('change', liga);
+  tela.addEventListener('webglcontextlost', (e) => { e.preventDefault(); desiste(); });
+  liga();
+})();
 </script>
 </body>
 </html>
