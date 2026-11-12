@@ -134,7 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     }
   }
 
-  func show() { loaded = true; web.load(URLRequest(url: URL(string: origin)!)); status.start() }
+  func show() { loaded = true; web.load(URLRequest(url: URL(string: origin)!, cachePolicy: .reloadIgnoringLocalCacheData)); status.start() }
 
   // traz a janela pra frente e, se pedido, navega até uma tela ou conversa
   func reveal(_ js: String? = nil) {

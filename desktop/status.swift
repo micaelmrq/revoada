@@ -200,7 +200,7 @@ final class StatusController: NSObject, UNUserNotificationCenterDelegate, WKScri
   }
 
   func start() {
-    mini.load(URLRequest(url: URL(string: "\(origin)/mini")!))
+    mini.load(URLRequest(url: URL(string: "\(origin)/mini")!, cachePolicy: .reloadIgnoringLocalCacheData))
     guard timer == nil else { return }
     let t = Timer(timeInterval: 2.5, repeats: true) { [weak self] _ in self?.poll() }
     // modo .common: continua atualizando com o menu aberto

@@ -1043,10 +1043,12 @@ const server = Bun.serve({
       if (!s) return new Response("sessão não existe", { status: 404 });
       return srv.upgrade(req, { data: { sid: s.id } }) ? undefined : new Response("upgrade falhou", { status: 400 });
     }
-    if (path === "/" || path === "/index.html") return new Response(Bun.file(join(PUBLIC, "index.html")));
-    if (path === "/logo.svg" || path === "/icon.svg") return new Response(Bun.file(join(PUBLIC, path)));
-    if (path === "/mini") return new Response(Bun.file(join(PUBLIC, "mini.html")));
-    if (path === "/md.js" || path === "/sync.js") return new Response(Bun.file(join(PUBLIC, path)));
+    // telas e scripts sempre conferidos com o servidor: a janela nativa guarda cópia em disco e, sem isso, o app atualizado abria a tela da versão anterior
+    const fresco = (arquivo: string) => new Response(Bun.file(join(PUBLIC, arquivo)), { headers: { "cache-control": "no-cache" } });
+    if (path === "/" || path === "/index.html") return fresco("index.html");
+    if (path === "/logo.svg" || path === "/icon.svg") return fresco(path);
+    if (path === "/mini") return fresco("mini.html");
+    if (path === "/md.js" || path === "/sync.js") return fresco(path);
     if (path === "/geist.woff2" || path === "/geist-mono.woff2" || path === "/newsreader.woff2") return new Response(Bun.file(join(PUBLIC, path)), { headers: { "content-type": "font/woff2", "cache-control": "max-age=86400" } });
     // só em desenvolvimento: estado de mentira pra olhar o painel da barra com tudo aceso
     if (path === "/api/demo-state" && process.env.REVOADA_DEMO) return json(demoState(await state(false)));
