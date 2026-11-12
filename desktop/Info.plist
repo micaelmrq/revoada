@@ -14,6 +14,8 @@
   <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSMicrophoneUsageDescription</key><string>O Revoada usa o microfone para você falar o pedido aos agentes em vez de digitar.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>O Revoada transforma o que você fala em texto para enviar aos agentes.</string>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict>
 </plist>
