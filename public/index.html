@@ -562,7 +562,7 @@
   .prov-cab .rodizio { margin-left: auto; color: var(--tinta3); font-size: 13px; display: flex; align-items: center; gap: 6px; }
   .conta { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(250px, 1.8fr) auto; gap: 18px; align-items: center; padding: 13px 2px; border-bottom: 1px solid var(--fio); scroll-margin: 80px; }
   .conta.foco { background: var(--sup); border-radius: 10px; border-bottom-color: transparent; padding-left: 10px; padding-right: 10px; margin: 0 -8px; }
-  .conta .n { min-width: 0; } .conta .n b { font-weight: 500; overflow-wrap: anywhere; } .conta .n div { color: var(--tinta3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conta .n { min-width: 0; } .conta .n b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .conta .como.quieto { color: var(--tinta3); font-size: 13px; } .conta .n div { color: var(--tinta3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conta .lim { color: var(--ambar); }
   .conta .como { color: var(--tinta3); font-size: 13px; }
   .conta .acao { justify-self: end; display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
@@ -903,7 +903,11 @@ async function api(path, method = "GET", body) {
 }
 const acc = (id) => S.accounts.find((a) => a.id === id);
 const prov = (id) => S.providers.find((p) => p.id === id);
-const accName = (a) => (a ? `${prov(a.provider).name} · ${a.label}` : "conta removida");
+// Nome que a tela mostra. A conta que usa o login que já existe na máquina é guardada como "padrão desta máquina" em todo
+// provedor; quatro linhas com o mesmo nome não dizem nada, então ela aparece pelo e-mail do login, ou como "desta máquina".
+const ehDaMaquina = (a) => !!a && a.id === `${a.provider}-padrao`;
+const rot = (a) => (!ehDaMaquina(a) ? a.label : a.status?.detail?.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0] || "desta máquina");
+const accName = (a) => (a ? `${prov(a.provider).name} · ${rot(a)}` : "conta removida");
 const ready = (a) => a.status.ok && !a.limit;
 const short = (p) => p.replace(S.home, "~");
 const base = (p) => p.split("/").filter(Boolean).pop() || "/";
@@ -1243,7 +1247,7 @@ function renderBots() {
     const p = prov(a.provider), u = worstUse(a), on = view.type === "accounts" && view.focus === a.id;
     const state = !a.status.ok ? "Sem login" : a.limit ? `No limite até ${hm(a.limit.until)}` : busy.has(a.id) ? "Trabalhando" : "Livre";
     return `<button class="item botl ${on ? "on" : ""}" data-acc="${esc(a.id)}" title="${esc(accName(a))} · ${state}${a.status.ok && a.usage?.length ? ` · ${u}% do limite da conta` : ""}">
-      <span class="com-pres">${rosto(a.provider, "p")}<span class="pres ${!a.status.ok ? "" : a.limit ? "limite" : busy.has(a.id) ? "faz" : "livre"}"></span></span><span class="t">${esc(p.name)}</span><span class="tag">${esc(a.label)}</span>
+      <span class="com-pres">${rosto(a.provider, "p")}<span class="pres ${!a.status.ok ? "" : a.limit ? "limite" : busy.has(a.id) ? "faz" : "livre"}"></span></span><span class="t">${esc(p.name)}</span><span class="tag">${esc(rot(a))}</span>
       <span class="cauda">${!a.status.ok ? `<span class="entrar">Entrar</span>` : `${u >= 85 ? `<span class="pct num">${u}%</span>` : ""}<span class="uso-m ${u >= 85 ? "alto" : ""}"><i style="width:${Math.max(Math.min(u, 100), 4)}%"></i></span>`}</span></button>`;
   };
   const html = `<div class="grupo">Bots<span class="dupla"><span class="num">${A.filter(ready).length}/${A.length}</span><button data-go-acc title="Contas e limites" aria-label="Contas e limites">${ic("ajustes")}</button><button data-add-acc title="Adicionar conta" aria-label="Adicionar conta">${ic("mais")}</button></span></div>` + A.map(row).join("");
@@ -1601,7 +1605,10 @@ function paintComposer() {
   $("salaChip").innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v4a2.5 2.5 0 0 1-2.5 2.5H9l-3.5 3v-3A2.5 2.5 0 0 1 4 10.5z"/><path d="M19 9.5a2.5 2.5 0 0 1 1.5 2.3v3.7a2.5 2.5 0 0 1-2 2.45V20l-3-2h-4"/></svg><span class="lb">${sala ? "Sala: conversam entre si" : "Em paralelo: cada um sozinho"}</span>`;
   $("salaChip").classList.toggle("on", sala);
   $("targetChip").innerHTML = `<span class="lb">${esc(who)}</span>${ICON.down}`; $("targetChip").title = who;
-  $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro</span>`; $("brainChip").classList.toggle("on", useBrain);
+  // quantas notas do cérebro acompanham o pedido que está sendo escrito: só o número no botão, os nomes ficam na dica
+  const notasDoPedido = useBrain ? peek.notas || [] : [];
+  $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro${notasDoPedido.length ? ` · ${notasDoPedido.length}` : ""}</span>`; $("brainChip").classList.toggle("on", useBrain);
+  $("brainChip").title = !useBrain ? "Cérebro desligado para este pedido. Clique para ligar." : notasDoPedido.length ? `${plural(notasDoPedido.length, "nota vai", "notas vão")} junto com este pedido:\n${notasDoPedido.join("\n")}` : "Entrega as notas relevantes do cérebro como contexto do pedido";
   $("modeChip").innerHTML = `${ICON.edit}<span class="lb">${MODES[mode]}</span>`; $("modeChip").classList.toggle("on", mode !== "read"); $("modeChip").title = MODE_HINT[mode] + " Clique para trocar.";
   $("attChip").style.display = "inline-flex"; // anexo vale em todo modo: numa conta vai como imagem, em paralelo e no terminal vai o caminho do arquivo
   if (!inChat && repo.cwd !== cwd()) { repo = { cwd: cwd(), repo: false, busy: false }; api("repo?cwd=" + encodeURIComponent(cwd())).then((r) => { if (repo.cwd === cwd()) { repo = { cwd: cwd(), ...r }; paintComposer(); } }).catch(() => {}); }
@@ -2086,14 +2093,14 @@ function peek() {
   const q = $("prompt").value.trim();
   // conversa que retoma a sessão do agente não recebe o cérebro de novo: prometer nota aqui seria mentira
   const t = view.type === "chat" && chat?.native ? targets()[0] || "" : "";
-  if (t && (t === chat.native.accountId || t === `pool:${chat.provider}`)) return ($("notes").textContent = "");
-  if (!useBrain || q.length < 8) return ($("notes").textContent = useBrain ? "" : "cérebro desligado");
+  const semNotas = () => { if (peek.notas?.length) { peek.notas = []; paintComposer(); } };
+  if (t && (t === chat.native.accountId || t === `pool:${chat.provider}`)) return semNotas();
+  if (!useBrain || q.length < 8) return semNotas();
   peek.t = setTimeout(async () => {
     const hits = await api(`brain/search?ctx=1&n=4&hint=${encodeURIComponent(base(cwd()))}&q=${encodeURIComponent(q)}`).catch(() => []);
     if ($("prompt").value.trim() !== q) return; // o pedido já foi enviado ou mudou: esta resposta é velha
     const names = [...new Set(hits.map((h) => h.title.split(" › ")[0]))];
-    $("notes").textContent = names.length ? `vai junto do cérebro: ${names.join(", ")}` : "nada do cérebro combina com este pedido";
-    $("notes").title = names.join("\n");
+    peek.notas = names; paintComposer();
   }, 350);
 }
 $("prompt").oninput = () => { const t = $("prompt"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 240) + "px"; peek(); paintSend(); if (view.type === "chat" && chat?.suggest) paintComposer(); };
@@ -2123,7 +2130,7 @@ $("send").onclick = async () => {
   const ts = targets(); if (!ts.length) return toast("Nenhuma conta pronta. Faça login em Contas.");
   const text = $("prompt").value;
   if (attached.some((x) => x.pending)) return toast("Espere o anexo terminar de subir.");
-  const clear = () => { $("prompt").value = ""; $("prompt").style.height = "auto"; $("notes").textContent = ""; attached = []; paintAtts(); };
+  const clear = () => { $("prompt").value = ""; $("prompt").style.height = "auto"; $("notes").textContent = ""; peek.notas = []; attached = []; paintAtts(); };
   if (view.type === "chat") {
     if (!text.trim() && !attached.length) return;
     if (rewriting != null && !chat.working) { const index = rewriting; rewriting = null; await api(`convos/${chat.id}/rewind`, "POST", { index, text }); clear(); return loadChat(true); }
@@ -2204,7 +2211,7 @@ function msgParts(m, i) {
   const same = (ask, it) => (it.kind === "cmd" && it.command === ask.detail) || (it.kind === "files" && it.changes.some((c) => c.path === ask.detail));
   const pending = items.filter((x) => x.kind === "ask" && x.state === "pending");
   const by = acc(m.accountId);
-  const parts = [["av", rosto(by?.provider)], ["who", `<div class="who"><b>${esc(by ? prov(by.provider).name : "conta removida")}</b>${by ? `<span class="tag">${esc(by.label)}</span>` : ""}${m.review ? `<span class="tag ok">${m.reviewKind === "security" ? "Auditoria de segurança" : "Revisão"}</span>` : ""}<time>${hm(m.at)}</time>${m.state === "working" ? "" : `<span class="num">${dur(took)}</span>`}${m.model ? `<span class="mdl" ${m.routed ? `title="Modelo automático: este pedido foi lido como ${m.routed}"` : ""}>${esc(m.model.replace(/^claude-/, "").replace(/\[.*\]$/, ""))}${m.routed ? ` · auto ${m.routed}` : ""}</span>` : ""}${m.tokens ? `<button class="xr num" data-xray="${i}" title="Ver o que pesou nesta resposta">${tok(m.tokens.in + m.tokens.out + m.tokens.cache)} tokens</button>` : ""}${m.brain?.length ? `<span class="b" title="${esc(m.brain.join("\n"))}">${plural(m.brain.length, "nota", "notas")} do cérebro</span>` : ""}${m.state === "stopped" ? "<span>interrompido</span>" : ""}</div>`]];
+  const parts = [["av", rosto(by?.provider)], ["who", `<div class="who"><b>${esc(by ? prov(by.provider).name : "conta removida")}</b>${by ? `<span class="tag">${esc(rot(by))}</span>` : ""}${m.review ? `<span class="tag ok">${m.reviewKind === "security" ? "Auditoria de segurança" : "Revisão"}</span>` : ""}<time>${hm(m.at)}</time>${m.state === "working" ? "" : `<span class="num">${dur(took)}</span>`}${m.model ? `<span class="mdl" ${m.routed ? `title="Modelo automático: este pedido foi lido como ${m.routed}"` : ""}>${esc(m.model.replace(/^claude-/, "").replace(/\[.*\]$/, ""))}${m.routed ? ` · auto ${m.routed}` : ""}</span>` : ""}${m.tokens ? `<button class="xr num" data-xray="${i}" title="Ver o que pesou nesta resposta">${tok(m.tokens.in + m.tokens.out + m.tokens.cache)} tokens</button>` : ""}${m.brain?.length ? `<span class="b" title="${esc(m.brain.join("\n"))}">${plural(m.brain.length, "nota", "notas")} do cérebro</span>` : ""}${m.state === "stopped" ? "<span>interrompido</span>" : ""}</div>`]];
   if (m.tokens && openActs.has(`x:${i}`)) parts.push(["xray", xrayHtml(m)]);
   // raciocínio, comandos, arquivos e ferramentas seguidos viram um grupo só
   let group = [];
@@ -2479,17 +2486,27 @@ const WINDOW_EXTRA = { overage_included: "extra" };
 const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
 const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
 const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
+// segunda linha da conta: o plano, e na conta da máquina o aviso de que é o login que já estava lá (o e-mail já é o título)
+const detalheDaConta = (a) => { const d = a.status.detail || "Pronta"; if (!ehDaMaquina(a)) return d; const plano = d.replace(/\s*·?\s*[\w.+-]+@[\w-]+(\.[\w-]+)+/, "").trim(); return [plano && !/^(pronta|logado)$/i.test(plano) ? plano : "", "login desta máquina"].filter(Boolean).join(" · "); };
+// o motivo do limite vem cru do CLI (às vezes um pedaço de JSON): vira uma frase, ou some se não der para dizer nada
+function motivoDoLimite(r) {
+  const t = String(r || "").trim();
+  if (!t) return "";
+  if (/RESOURCE_EXHAUSTED|credits? (are )?depleted|billing|prepay|quota/i.test(t)) return "a cota ou o crédito desta conta acabou no provedor";
+  if (/usage limit|rate limit|limit reached|too many requests|429/i.test(t)) return "limite de uso da conta";
+  return /[{}"\\]|^\W/.test(t) || t.length > 140 ? "" : t.replace(/\.$/, "");
+}
 function renderAccounts() {
   const A = S.accounts.filter((a) => prov(a.provider).installed), lim = A.filter((a) => a.limit);
   $("accLead").textContent = `${plural(A.filter(ready).length, "conta pronta", "contas prontas")} de ${A.length}.` + (lim.length ? ` ${plural(lim.length, "bateu", "bateram")} no limite, a primeira volta às ${hm(Math.min(...lim.map((a) => a.limit.until)))}.` : "") + " Cada conta tem login próprio, feito pelo CLI oficial do provedor.";
   const line = (a) => {
     const foco = view.type === "accounts" && view.focus === a.id ? "foco" : "";
-    if (!a.status.ok) return `<div class="conta sem ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(a.label)}</b><div>Sem login</div></div><div class="como">O login abre aqui no painel, pelo CLI oficial do ${esc(prov(a.provider).name)}.</div>
+    if (!a.status.ok) return `<div class="conta sem ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(rot(a))}</b><div>Sem login</div></div><div class="como">O login abre aqui no painel, pelo CLI oficial do ${esc(prov(a.provider).name)}.</div>
       <div class="acao"><button class="btn line mini" data-login="${a.id}">Fazer login</button><button class="link" data-edit="${a.id}">Gerenciar</button></div></div>`;
-    return `<div class="conta ${a.limit ? "limite" : ""} ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(a.label)}</b><div title="${esc(a.status.detail || "")}">${esc(a.status.detail || "Pronta")}${a.limit ? ' · <span class="lim">no limite</span>' : ""}</div></div>
-      ${a.usage?.length ? usoBarras(a) : `<div class="como">Sem leitura de uso ainda. Aparece depois da primeira resposta desta conta.</div>`}
+    return `<div class="conta ${a.limit ? "limite" : ""} ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(rot(a))}</b><div title="${esc(a.status.detail || "")}">${esc(detalheDaConta(a))}${a.limit ? ' · <span class="lim">no limite</span>' : ""}</div></div>
+      ${a.usage?.length ? usoBarras(a) : `<div class="como quieto">Uso aparece depois da primeira resposta</div>`}
       <div class="acao"><button class="btn line mini" data-open="${a.id}">Abrir sessão</button><button class="link" data-edit="${a.id}">Gerenciar</button></div></div>`
-      + (a.limit ? `<div class="conta-nota">${ic("troca")}<span><b>${esc(accName(a))}</b> está em pausa até ${hm(a.limit.until)}${a.limit.reason ? `: ${esc(a.limit.reason)}` : ""}. ${S.settings.rotate ? "O rodízio leva os pedidos para a próxima conta do mesmo provedor, com a conversa junto." : "O rodízio está desligado em Ajustes."}</span><button class="btn line mini" data-free="${a.id}">Liberar agora</button></div>` : "");
+      + (a.limit ? `<div class="conta-nota">${ic("troca")}<span><b>${esc(accName(a))}</b> está em pausa até ${hm(a.limit.until)}${motivoDoLimite(a.limit.reason) ? `: ${esc(motivoDoLimite(a.limit.reason))}` : ""}. ${S.settings.rotate ? "O rodízio leva os pedidos para a próxima conta do mesmo provedor, com a conversa junto." : "O rodízio está desligado em Ajustes."}</span><button class="btn line mini" data-free="${a.id}">Liberar agora</button></div>` : "");
   };
   const html = S.providers.map((p) => {
     const mine = S.accounts.filter((a) => a.provider === p.id), logged = mine.filter((a) => a.status.ok).length;

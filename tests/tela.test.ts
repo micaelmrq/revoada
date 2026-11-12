@@ -561,7 +561,7 @@ describe.skipIf(!CHROME)("tela", () => {
     const estado = await env.api("state"), accounts = estado.accounts;
     const instalados = new Set(estado.providers.filter((p: any) => p.installed).map((p: any) => p.id));
     expect(bots.map((b: string[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider)).map((a: any) => a.id));
-    expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", accounts.find((a: any) => a.id === "claude-padrao").label, true, "uso"]);
+    expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", "teste@exemplo.dev", true, "uso"]); // a conta da máquina aparece pelo e-mail do login, não como "padrão desta máquina"
     expect(bots.filter((b: any[]) => b[4] === "Entrar").map((b: any[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider) && !a.status.ok).map((a: any) => a.id));
     await page(`document.querySelector('#bots [data-acc="claude-padrao"]').click();`);
     await until(`document.querySelector('#accList .conta.foco')`);
@@ -662,7 +662,10 @@ describe.skipIf(!CHROME)("tela", () => {
     await env.idle(id);
     await page(`await refresh(); go({ type: "chat", id: "${id}" });`);
     await until(`chat && chat.id === "${id}" && !chat.working && document.querySelector("#msgs .acts .cnt")`);
-    const label = (await env.api("state")).accounts.find((a: any) => a.id === "claude-padrao").label;
+    const label = "teste@exemplo.dev"; // a conta da máquina aparece pelo e-mail do login
+    expect((await env.api("state")).accounts.find((a: any) => a.id === "claude-padrao").label).toBe("padrão desta máquina");
+    expect(await page(`return [rot({ id: "codex-padrao", provider: "codex", label: "padrão desta máquina", status: { detail: "ChatGPT" } }), rot({ id: "claude-ab12", provider: "claude", label: "dev-1", status: { detail: "Team · a@b.dev" } }), motivoDoLimite('ing#prepay. ","status":"RESOURCE_EXHAUSTED"}}'), motivoDoLimite("You've hit your usage limit. Try again in 2 hours."), motivoDoLimite('{"x":1}'), detalheDaConta({ id: "claude-padrao", provider: "claude", status: { detail: "Max · teste@exemplo.dev" } })]`))
+      .toEqual(["desta máquina", "dev-1", "a cota ou o crédito desta conta acabou no provedor", "limite de uso da conta", "", "Max · login desta máquina"]);
     const room = await page(`const ms = [...document.querySelectorAll("#msgs > .m")], bot = ms.at(-1), me = ms[0];
       return { title: document.querySelector("#chTitle").textContent === chat.title, dir: document.querySelector("#chDir").innerText.trim(), tabs: [...document.querySelectorAll("#v-chat .abas button")].map((b) => [b.textContent, b.getAttribute("aria-current")]),
         acc: document.querySelector("#chAcc").innerText.trim(), acts: [...document.querySelectorAll("#chActs button")].map((b) => b.textContent),
