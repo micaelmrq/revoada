@@ -244,6 +244,8 @@
 
   /* início: sala vazia, com o grão da identidade */
   #v-home { position: relative; isolation: isolate; }
+  #v-home canvas.campo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #v-home.gl::before { display: none; }
   #v-home::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--grao); opacity: .5;
     -webkit-mask-image: radial-gradient(70% 13% at 28% 14%, #000, transparent 72%), radial-gradient(80% 12% at 78% 34%, #000, transparent 72%), radial-gradient(75% 14% at 30% 58%, #000, transparent 72%), radial-gradient(85% 12% at 72% 84%, #000, transparent 72%);
     mask-image: radial-gradient(70% 13% at 28% 14%, #000, transparent 72%), radial-gradient(80% 12% at 78% 34%, #000, transparent 72%), radial-gradient(75% 14% at 30% 58%, #000, transparent 72%), radial-gradient(85% 12% at 72% 84%, #000, transparent 72%); }
@@ -599,6 +601,7 @@
 
 <main>
   <section class="view" id="v-home">
+    <canvas class="campo" aria-hidden="true"></canvas>
     <div class="hero"><div class="miolo">
       <span data-logo class="marca-g"></span>
       <h1>O que vamos fazer em <button id="heroDir"></button>?</h1>
@@ -1994,6 +1997,7 @@ async function loadChat(force) {
 }
 
 // ---------- conversa ----------
+const loginsVistos = new Set(); // sessões de login que a pessoa acompanhou abertas: só essas voltam sozinhas para Contas
 function renderThread() {
   const isRun = view.type === "run";
   $("stage").style.display = isRun ? "none" : "flex"; $("runView").style.display = isRun ? "block" : "none";
@@ -2002,17 +2006,22 @@ function renderThread() {
   const a = acc(s.accountId);
   $("thTitle").textContent = s.kind === "login" ? `Login · ${accName(a)}` : s.title;
   const back = view.from && S.convos.some((c) => c.id === view.from) ? view.from : "";
-  $("thTabs").innerHTML = (back ? `<button data-back="${esc(back)}">Conversa</button>` : "") + `<button aria-current="true">Terminal</button>`;
+  const login = s.kind === "login";
+  $("thTabs").innerHTML = (login ? `<button data-contas>Contas</button>` : back ? `<button data-back="${esc(back)}">Conversa</button>` : "") + `<button aria-current="true">Terminal</button>`;
   $("thSub").innerHTML = `${esc(accName(a))} · ${esc(short(s.cwd))}${s.brain?.length ? ` · <span class="b" title="${esc(s.brain.join("\n"))}">${plural(s.brain.length, "nota", "notas")} do cérebro</span>` : ""}${s.alive ? "" : " · encerrada"}${s.limitHit ? " · bateu no limite" : ""}`;
-  $("thActs").innerHTML = s.alive ? `<button class="link" data-end="${s.id}">Encerrar</button>` : `<button class="link" data-again="${s.accountId}|${esc(s.cwd)}">Nova sessão nesta conta</button>`;
+  // login é um desvio a partir de Contas: a volta fica sempre à mão, e quando o login dá certo a tela volta sozinha
+  $("thActs").innerHTML = (login ? `<button class="link" data-contas>Voltar para Contas</button>` : "") + (s.alive ? `<button class="link" data-end="${s.id}">${login ? "Cancelar login" : "Encerrar"}</button>` : `<button class="link" data-again="${s.accountId}|${esc(s.cwd)}">Nova sessão nesta conta</button>`);
+  if (login && s.alive) loginsVistos.add(s.id);
+  if (login && !s.alive && a?.status.ok && loginsVistos.delete(s.id)) setTimeout(() => { if (view.type === "session" && view.id === s.id) { go({ type: "accounts" }); toast(`${accName(a)} está logada.`); } }, 900);
   if (!panes.has(s.id)) mountPane(s);
   for (const [id, p] of panes) p.el.classList.toggle("show", id === s.id);
   const p = panes.get(s.id);
   requestAnimationFrame(() => { try { p.fit.fit(); } catch {} if (renderThread.last !== s.id) { p.term.focus(); renderThread.last = s.id; } });
 }
-$("thTabs").onclick = (e) => { const b = e.target.closest("[data-back]"); if (b) go({ type: "chat", id: b.dataset.back }); };
+$("thTabs").onclick = (e) => { if (e.target.closest("[data-contas]")) return go({ type: "accounts" }); const b = e.target.closest("[data-back]"); if (b) go({ type: "chat", id: b.dataset.back }); };
 $("thActs").onclick = async (e) => {
   const b = e.target.closest("button"); if (!b) return;
+  if ("contas" in b.dataset) return go({ type: "accounts" });
   if (b.dataset.end) { if (confirm("Encerrar esta sessão? O agente para na hora. A conversa fica no histórico.")) { await api("sessions/" + b.dataset.end, "DELETE"); setTimeout(refresh, 400); } }
   if (b.dataset.again) { const [accountId, dir] = b.dataset.again.split("|"); const { id } = await api("sessions", "POST", { accountId, kind: "chat", cwd: dir }); await refresh(); go({ type: "session", id }); }
   if (b.dataset.cancel) { await api(`runs/${b.dataset.cancel}/cancel`, "POST", {}); loadRun(); }
@@ -2313,6 +2322,144 @@ api("dirs").then((d) => ($("dirs").innerHTML = d.map((x) => `<option value="${es
 // primeira vez: o painel abre nos primeiros passos
 refresh().then(() => { go(!S.settings.onboarded && view.type === "home" ? { type: "start" } : S.settings.onboarded && view.type === "start" ? { type: "home" } : view); refresh(true); });
 setInterval(() => document.visibilityState === "visible" && refresh(), 4000);
+
+// ---------- campo de grão da tela inicial ----------
+// O mesmo fundo da página do Revoada (site/main.js): fios de grão que ondulam devagar, pintados em WebGL em duas passadas.
+// A primeira desenha os fios numa textura pequena; a segunda junta os fios com um grão de 256 pontos e pinta a tela.
+// Sem WebGL fica o grão parado em CSS.
+(() => {
+  const fundo = document.getElementById('v-home');
+  const tela = fundo?.querySelector('canvas.campo');
+  if (!tela) return;
+  let gl = null, quadro = 0;
+  const desiste = () => { cancelAnimationFrame(quadro); tela.remove(); fundo.classList.remove('gl'); };
+  try { gl = tela.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' }); } catch { /* sem WebGL */ }
+  if (!gl) return desiste();
+
+  const PRECISAO = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n';
+  const VERTICE = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const FIOS = PRECISAO + `uniform vec2 uSize;uniform float uAr,uTime,uIn;uniform vec3 uPtr;
+vec2 h22(vec2 p){vec3 q=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973));q+=dot(q,q.yzx+33.33);return fract((q.xx+q.yz)*q.zy)*2.-1.;}
+float gn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(dot(h22(i),f),dot(h22(i+vec2(1.,0.)),f-vec2(1.,0.)),u.x),mix(dot(h22(i+vec2(0.,1.)),f-vec2(0.,1.)),dot(h22(i+vec2(1.,1.)),f-vec2(1.,1.)),u.x),u.y);}
+float fbm3(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+float fbm5(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*gn(p);p=p*2.+vec2(13.7,7.3);a*=.5;}return s;}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uSize*vec2(uAr,1.);float t=uTime;
+  vec2 p=vec2(uv.x/1.03,uv.y/.154);
+  p.y+=.38*sin(uv.x*2.4-t*.30)+.18*sin(uv.x*5.1-t*.45+1.7);
+  p.x-=t*.03;
+  vec2 q=p*vec2(.55,.4);
+  vec2 w=vec2(fbm3(q+vec2(0.,t*.045)),fbm3(q+vec2(4.1,1.3-t*.037)));
+  float a=clamp(.35+1.2*fbm5(p+w*vec2(1.1,.8)),0.,1.);
+  vec2 d=uv-vec2(.5*uAr,.5),e=uv-vec2(uPtr.x*uAr,uPtr.y),l=(uv-vec2(.8*uAr,1.))/vec2(max(uAr,1.)*.63,.7);
+  float m=(1.+.32*uPtr.z*exp(-dot(e,e)/.035))*(1.-.5*smoothstep(.45,1.25,length(d/vec2(max(uAr,1.)*.62,.62))))*uIn*uIn*(3.-2.*uIn);
+  gl_FragColor=vec4(a,m/1.5,exp(-dot(l,l)),1.);}`;
+  const PINTA = PRECISAO + `uniform sampler2D uWisps,uGrain;uniform vec2 uRes;uniform float uDpr,uForca,uLuz;uniform vec3 uBase,uFio;
+void main(){
+  vec4 w=texture2D(uWisps,gl_FragCoord.xy/uRes);
+  float b=texture2D(uGrain,gl_FragCoord.xy/(uDpr*256.)).r;
+  float al=min(1.,clamp(1.32*(1.1*w.r*b+.45*w.r)-.5,0.,1.)*w.g*1.5)*uForca;
+  gl_FragColor=vec4(mix(uBase,uFio,al)+uLuz*w.b*uForca,1.);}`;
+
+  const programa = (fragmento) => {
+    const prog = gl.createProgram();
+    for (const [tipo, fonte] of [[gl.VERTEX_SHADER, VERTICE], [gl.FRAGMENT_SHADER, fragmento]]) {
+      const sh = gl.createShader(tipo);
+      gl.shaderSource(sh, fonte); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      gl.attachShader(prog, sh);
+    }
+    gl.bindAttribLocation(prog, 0, 'p'); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const u = {};
+    for (let i = 0; i < gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS); i++) { const nome = gl.getActiveUniform(prog, i).name; u[nome] = gl.getUniformLocation(prog, nome); }
+    return { prog, u };
+  };
+  let fios, pinta;
+  try { fios = programa(FIOS); pinta = programa(PINTA); } catch { return desiste(); }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const textura = (borda, filtro) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtro); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filtro);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, borda); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, borda);
+    return t;
+  };
+
+  // o grão: ruído com semente fixa, cada ponto misturado com os três de baixo, o que puxa o fio na vertical
+  const LADO = 256, grao = new Uint8Array(LADO * LADO);
+  let semente = 5;
+  const sorteia = () => { semente = semente + 1831565813 | 0; let v = Math.imul(semente ^ semente >>> 15, 1 | semente); v = v + Math.imul(v ^ v >>> 7, 61 | v) ^ v; return ((v ^ v >>> 14) >>> 0) / 4294967296; };
+  const fino = Float32Array.from({ length: LADO * LADO }, sorteia), largo = Float32Array.from({ length: LADO * LADO }, sorteia);
+  for (let y = 0; y < LADO; y++) for (let x = 0; x < LADO; x++) {
+    let fio = 0;
+    for (let k = 0; k < 4; k++) fio += fino[(y + k) % LADO * LADO + x];
+    const v = 0.5 + 0.7 * (fio / 4 - 0.5) + 0.2 * ((largo[y * LADO + x] + largo[(y + 1) % LADO * LADO + x]) / 2 - 0.5);
+    grao[y * LADO + x] = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  }
+  const texGrao = textura(gl.REPEAT, gl.NEAREST);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, LADO, LADO, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, grao);
+
+  let placa = gl.getParameter(gl.RENDERER);
+  if (placa === 'WebKit WebGL') { const ext = gl.getExtension('WEBGL_debug_renderer_info'); if (ext) placa = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL); }
+  const fraca = /swiftshader|llvmpipe|software|basic render/i.test(placa);
+  const texFios = textura(gl.CLAMP_TO_EDGE, gl.LINEAR), quadroFios = gl.createFramebuffer();
+  let escala = 1, larg = 1, alt = 1, fiosL = 2, fiosA = 2;
+  const mede = () => {
+    larg = tela.clientWidth || fundo.clientWidth || innerWidth; alt = tela.clientHeight || fundo.clientHeight || innerHeight;
+    escala = Math.min(fraca ? 0.6 : 1, Math.sqrt(4e6 / (larg * alt)));
+    tela.width = Math.max(1, Math.round(larg * escala)); tela.height = Math.max(1, Math.round(alt * escala));
+    fiosL = Math.max(2, Math.ceil(larg / 6)); fiosA = Math.max(2, Math.ceil(alt / 3));
+    gl.bindTexture(gl.TEXTURE_2D, texFios);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fiosL, fiosA, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texFios, 0);
+    return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  };
+  if (!mede()) return desiste();
+  fundo.classList.add('gl');
+
+  const mouse = { x: 0.5, y: 0.5, on: 0, tx: 0.5, ty: 0.5, ton: 0 };
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse' || !tela.clientWidth) return; const r = tela.getBoundingClientRect(); mouse.tx = (e.clientX - r.left) / r.width; mouse.ty = 1 - (e.clientY - r.top) / r.height; mouse.ton = mouse.tx >= 0 && mouse.tx <= 1 && mouse.ty >= 0 && mouse.ty <= 1 ? 1 : 0; }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { mouse.ton = 0; });
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)');
+  // mais fraco que na capa da página: aqui tem título, cartões e a caixa de pedido por cima. No tema claro os fios escurecem o papel em vez de clarear o grafite
+  const TEMPO_INICIAL = 40, comeco = performance.now();
+  const TEMAS = { dark: { base: [0.0667, 0.0667, 0.0706], fio: [0.5, 0.5, 0.51], luz: 0.045, forca: 0.62 }, light: { base: [0.9843, 0.9843, 0.9804], fio: [0.66, 0.66, 0.68], luz: -0.02, forca: 0.5 } };
+  const tema = () => TEMAS[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'];
+  const desenha = () => {
+    if (tela.clientWidth !== larg || tela.clientHeight !== alt) { if (!mede()) return desiste(); }
+    const c = tema();
+    const t = (performance.now() - comeco) / 1000, vivo = !calmo.matches;
+    mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05; mouse.on += (mouse.ton - mouse.on) * 0.03;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadroFios); gl.viewport(0, 0, fiosL, fiosA); gl.useProgram(fios.prog);
+    gl.uniform2f(fios.u.uSize, fiosL, fiosA); gl.uniform1f(fios.u.uAr, larg / alt);
+    gl.uniform1f(fios.u.uTime, vivo ? TEMPO_INICIAL + t : TEMPO_INICIAL);
+    gl.uniform1f(fios.u.uIn, vivo ? Math.min(1, Math.max(0, t - 0.3) / 3.2) : 1);
+    gl.uniform3f(fios.u.uPtr, mouse.x, mouse.y, vivo ? mouse.on : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, tela.width, tela.height); gl.useProgram(pinta.prog);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texFios); gl.uniform1i(pinta.u.uWisps, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texGrao); gl.uniform1i(pinta.u.uGrain, 1);
+    gl.uniform2f(pinta.u.uRes, tela.width, tela.height); gl.uniform1f(pinta.u.uDpr, escala); gl.uniform1f(pinta.u.uForca, c.forca); gl.uniform1f(pinta.u.uLuz, c.luz); gl.uniform3fv(pinta.u.uBase, c.base); gl.uniform3fv(pinta.u.uFio, c.fio);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  const PASSO_MS = fraca ? 49 : 32;
+  let ultimo = -1e9;
+  // só pinta com a tela inicial à vista: em conversa, Contas ou com a janela escondida o campo não gasta nada
+  const laco = (agora) => { quadro = requestAnimationFrame(laco); if (agora - ultimo < PASSO_MS || !tela.clientWidth || document.hidden) return; ultimo = agora; desenha(); };
+  const liga = () => { cancelAnimationFrame(quadro); if (calmo.matches) desenha(); else quadro = requestAnimationFrame(laco); };
+  // com menos movimento fica um quadro parado, repintado quando a tela muda de tamanho, de tema ou volta a aparecer
+  new ResizeObserver(() => { if (calmo.matches && tela.clientWidth) desenha(); }).observe(tela);
+  new MutationObserver(() => { if (calmo.matches && tela.clientWidth) desenha(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  calmo.addEventListener('change', liga);
+  tela.addEventListener('webglcontextlost', (e) => { e.preventDefault(); desiste(); });
+  liga();
+})();
 </script>
 </body>
 </html>

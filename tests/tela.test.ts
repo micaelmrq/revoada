@@ -708,4 +708,32 @@ describe.skipIf(!CHROME)("tela", () => {
     await until(`view.type === "accounts" && !document.querySelector("#appsDlg").open && document.querySelector("#toolsBox .switch")`);
     await page(`go({ type: "home" });`);
   }, SLOW);
+
+  test("login de conta: a tela do terminal tem a volta para Contas, na aba e no canto", async () => {
+    await page(`go({ type: "accounts" }); window.__login = null; openSession("claude-padrao", "login").then(() => (window.__login = view.id));`);
+    // se o login termina bem a tela volta sozinha; antes disso, ou se ele falha, a volta está nos dois lugares
+    await until(`window.__login`);
+    const tela = await page(`const s = S.sessions.find((x) => x.id === window.__login); go({ type: "session", id: s.id });
+      return { titulo: document.querySelector("#thTitle").textContent.startsWith("Login · "), aba: [...document.querySelectorAll("#thTabs button")].map((b) => b.textContent), canto: [...document.querySelectorAll("#thActs button")].map((b) => b.textContent)[0] };`);
+    expect(tela).toEqual({ titulo: true, aba: ["Contas", "Terminal"], canto: "Voltar para Contas" });
+    await page(`document.querySelector("#thActs [data-contas]").click();`);
+    expect(await page(`return view.type`)).toBe("accounts");
+    await page(`go({ type: "session", id: window.__login }); document.querySelector("#thTabs [data-contas]").click();`);
+    expect(await page(`return view.type`)).toBe("accounts");
+    await page(`go({ type: "home" });`);
+  }, SLOW);
+
+  test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {
+    await page(`go({ type: "home" });`);
+    const campo = await page(`const c = document.querySelector("#v-home canvas.campo"), v = document.querySelector("#v-home");
+      // sem WebGL (máquina de teste sem placa) o canvas sai e fica o grão em CSS: as duas saídas valem
+      if (!c) return { saida: "css", gl: v.classList.contains("gl") };
+      const r = c.getBoundingClientRect(), rv = v.getBoundingClientRect();
+      return { saida: "webgl", gl: v.classList.contains("gl"), cobre: Math.abs(r.width - rv.width) < 1 && Math.abs(r.height - rv.height) < 1, atras: getComputedStyle(c).zIndex, clique: getComputedStyle(c).pointerEvents };`);
+    if (campo.saida === "css") expect(campo).toEqual({ saida: "css", gl: false });
+    else expect(campo).toEqual({ saida: "webgl", gl: true, cobre: true, atras: "-1", clique: "none" });
+    await page(`go({ type: "accounts" });`);
+    expect(await page(`const c = document.querySelector("#v-home canvas.campo"); return c ? c.clientWidth : 0`)).toBe(0);
+    await page(`go({ type: "home" });`);
+  }, SLOW);
 });
