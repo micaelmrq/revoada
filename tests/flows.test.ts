@@ -264,12 +264,14 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(r.kind).toBe("chat");
     let c = await idle(r.id);
     expect(c.room).toEqual(["claude-padrao", colegaId]);
-    // o segundo já leu o primeiro; na rodada de reação os dois passaram e a fala de quem passa não fica na conversa
+    // os dois falam ao mesmo tempo, sem ler um ao outro; na rodada de reação os dois passaram e a fala de quem passa não fica na conversa
     const [eu, colega] = [c.messages[1], c.messages[2]];
     expect(falas(c).length).toBe(2);
     expect(falas(c)[0]).toMatch(/^sala: Claude · .+ fala depois de 0$/);
-    expect(falas(c)[1]).toMatch(/^sala: Codex · .+ fala depois de 1$/);
+    expect(falas(c)[1]).toMatch(/^sala: Codex · .+ fala depois de 0$/);
     expect([eu.accountId, colega.accountId, eu.room, eu.state, colega.state]).toEqual(["claude-padrao", colegaId, true, "done", "done"]);
+    // em paralelo de verdade: a fala do segundo começou antes de a do primeiro terminar
+    expect(colega.at).toBeLessThan(eu.endedAt);
     // mensagem seguinte do usuário: a sala inteira responde de novo, e com SALA-TEIMA cada um reage uma vez ao outro
     await post(`convos/${r.id}/send`, { text: "agora SALA-TEIMA" });
     c = await idle(r.id);
