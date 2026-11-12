@@ -815,7 +815,7 @@
           <button class="chip" id="isoChip" title="O agente trabalha numa cópia própria do repositório, num branch novo. A cópia some sozinha quando o trabalho vira PR ou não sobra nada só nela."></button>
           <button class="chip" id="termChip" title="Abre o terminal do próprio agente em vez da conversa"></button>
           <button class="chip" id="supChip" title="Um agente divide o pedido em tarefas, você aprova o plano, cada tarefa roda numa cópia isolada em contas diferentes, outra conta revisa e no fim um agente junta tudo."></button>
-          <button class="chip" id="salaChip" title="Sala: os agentes escolhidos conversam entre si na mesma conversa, um por vez, lendo uns aos outros. Desligado, cada um responde sozinho, lado a lado."></button>
+          <button class="chip" id="salaChip" title="Sala: os agentes escolhidos conversam na mesma conversa. Todos respondem ao mesmo tempo e, na rodada seguinte, reagem ao que os outros disseram. Desligado, cada um responde sozinho, lado a lado."></button>
           <button class="chip" id="schedChip" title="Rodar este pedido mais tarde ou todo dia" aria-label="Agendar"></button>
         <span class="sp"></span>
           <button class="chip" id="modelChip" title="Modelo e esforço das próximas respostas"></button>
@@ -1631,7 +1631,7 @@ function paintComposer() {
   $("prompt").classList.toggle("sug", !!sug);
   if (sug && !$("prompt").value) $("notes").textContent = "sugestão · Tab aceita · Enter envia";
   else if ($("notes").textContent.startsWith("sugestão")) $("notes").textContent = "";
-  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? (chat?.room ? "Escreva: a sala para e ouve assim que quem está falando terminar" : "Escreva a próxima: entra quando o agente terminar") : "Responder";
+  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? (chat?.room ? "Escreva: a sala para e ouve assim que esta rodada terminar" : "Escreva a próxima: entra quando o agente terminar") : "Responder";
   const ts = targets();
   const pv = curProvider(), ch = curChoice();
   $("modelChip").style.display = pv && !terminal && !(inChat && chat?.room) && !(!inChat && targets().length > 1 && sala) ? "inline-flex" : "none"; // na sala cada agente fala no padrão da própria conta
@@ -2443,7 +2443,7 @@ function renderChat() {
     while (el.children.length > parts.length) el.lastChild.remove();
   });
   while (wrap.children.length > chat.messages.length) wrap.lastChild.remove();
-  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : chat.room ? "entra quando quem está falando terminar" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}${chat.working && !j ? `<button class="link" data-ja title="Interrompe quem está respondendo e manda esta mensagem">enviar agora</button>` : ""}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
+  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : chat.room ? "entra quando esta rodada terminar" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}${chat.working && !j ? `<button class="link" data-ja title="Interrompe quem está respondendo e manda esta mensagem">enviar agora</button>` : ""}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
   if ($("queued").dataset.h !== queued) { $("queued").dataset.h = queued; $("queued").innerHTML = queued; }
   tickChat();
   // o plano muda enquanto o agente trabalha; quando ele termina, busca a versão final sem esperar

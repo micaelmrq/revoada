@@ -15,13 +15,13 @@ const agora = Math.floor(Date.now() / 1000);
 // quem lançou o agente saiu (o demo foi encerrado): não fica processo para trás
 setInterval(() => { if (process.ppid === 1) process.exit(0); }, 2000).unref();
 
-// Sala: os quatro conversam sobre o pedido, cada um com as suas falas, na ordem em que a vez chega.
+// Sala: os quatro respondem ao mesmo tempo e, na rodada seguinte, reagem ao que os outros disseram.
 // A fala seguinte de cada um sai conforme quantas vezes ele já falou na conversa; acabou a lista, ele passa.
 const SALA: Record<string, string[]> = {
-  claude: ["Olhei `src/rotas/pedidos.ts`: o offset aparece na rota e no repositório. Eu pego esses dois.", "Fechado: cursor composto, como o Gemini disse. Codex, pode escrever os testes já nesse formato."],
-  codex: ["Fico com `tests/pedidos.test.ts`. Escrevo os casos do cursor antes de o Claude mexer na rota, assim a troca já nasce coberta.", "Combinado. Os testes vão com (data, id)."],
-  gemini: ["Um cuidado antes: cursor só por `id` quebra se a lista sair ordenada por data. Sugiro cursor composto, data e id.", "Eu atualizo a documentação da API, que ainda cita `?pagina=`."],
-  grok: ["Voto no cursor composto. Da minha parte, confiro no fim se o `?pagina=` antigo continua respondendo."],
+  claude: ["Olhei `src/rotas/pedidos.ts`: o offset aparece na rota e no repositório. Eu pego esses dois.", "Fechado: cursor composto, como o Gemini propôs. Vou mexer na rota e no repositório já nesse formato. Codex, os testes podem assumir (data, id)."],
+  codex: ["Eu pego `tests/pedidos.test.ts`: escrevo os casos do cursor, incluindo o `?pagina=` antigo, que tem de continuar respondendo.", "Combinado com o Claude: os testes vão com (data, id). Deixo a rota com ele."],
+  gemini: ["Um cuidado: cursor só por `id` quebra se a lista sair ordenada por data. Proponho cursor composto, data e id. Eu pego a documentação da API, que ainda cita `?pagina=`."],
+  grok: ["Da minha parte, confiro no fim se o `?pagina=` antigo continua respondendo. Não mexo em arquivo de ninguém.", "Vi que o Claude e o Codex também olharam o `?pagina=`. Fico só com a conferência final."],
 };
 function sala(dito: string, eu: string): string | null {
   if (!dito.includes("<sala>")) return null;

@@ -269,7 +269,8 @@ export function createConvos(d: {
 }) {
   mkdirSync(d.dir, { recursive: true });
   const convos = new Map<string, Convo>();
-  const procs = new Map<string, { proc: any; stopped: boolean }>();
+  // na sala vários agentes respondem ao mesmo tempo na mesma conversa: um conjunto de processos por conversa
+  const procs = new Map<string, Set<{ proc: any; stopped: boolean }>>();
   const asks = new Map<string, Map<string, (allow: boolean) => void>>(); // conversa -> pedido -> resposta
   const timers = new Map<string, any>();
   const watchers = new Map<string, Set<() => void>>(); // quem está com a conversa aberta na tela
@@ -378,7 +379,8 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
     });
     const write = (s: string) => { try { proc.stdin.write(s); proc.stdin.flush(); } catch {} };
     const closeIn = () => { try { proc.stdin.end(); } catch {} };
-    const pending = new Map<string, (allow: boolean) => void>();
+    // pedidos de permissão da conversa inteira (os de todos os agentes que estiverem respondendo) e os deste processo
+    const pending = asks.get(c.id) || new Map<string, (allow: boolean) => void>(), meus = new Set<string>();
     asks.set(c.id, pending);
     const sink: Sink = {
       up(key, item) {
@@ -406,8 +408,9 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
         items.push(it);
         c.waiting = true;
         touch(c);
+        meus.add(req);
         pending.set(req, (allow) => {
-          pending.delete(req);
+          pending.delete(req); meus.delete(req);
           (it as any).state = allow ? "allowed" : "denied";
           c.waiting = pending.size > 0;
           touch(c);
@@ -417,7 +420,8 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
     };
     if (adapter.stdin) write(adapter.stdin(opts));
     const handle = { proc, stopped: false };
-    procs.set(c.id, handle);
+    if (!procs.has(c.id)) procs.set(c.id, new Set());
+    procs.get(c.id)!.add(handle);
     const timer = setTimeout(() => proc.kill(), TURN_TIMEOUT_MS);
     let errTail = "";
     const readErr = (async () => { const dec = new TextDecoder(); for await (const ch of proc.stderr) errTail = (errTail + dec.decode(ch, { stream: true })).slice(-4000); })();
@@ -440,9 +444,11 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
     const code = await proc.exited;
     await readErr;
     clearTimeout(timer);
-    procs.delete(c.id);
-    asks.delete(c.id);
-    c.waiting = false;
+    procs.get(c.id)?.delete(handle);
+    if (!procs.get(c.id)?.size) procs.delete(c.id);
+    for (const req of meus) pending.delete(req);
+    if (!pending.size) asks.delete(c.id);
+    c.waiting = pending.size > 0;
     for (const it of items) if (it.kind === "ask" && it.state === "pending") it.state = "denied";
     // CLI sem eventos (grok, ou erro antes de começar): o texto puro é a resposta
     if (!produced && raw.trim() && code === 0 && !failure) { sink.up("raw", { kind: "text", text: raw.trim() }); finished = true; }
@@ -554,9 +560,10 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
 
   // ---------- sala ----------
   const provName = (p: string) => d.provName?.(p) || p;
-  // Vários agentes na mesma conversa. Depois de cada mensagem do usuário todos falam, um por vez e na ordem da sala,
-  // cada um lendo o que os outros já disseram. Em seguida vêm rodadas de reação: quem tem algo a acrescentar fala,
-  // quem não tem responde PASSO e a fala nem aparece. Acaba quando ninguém mais tem o que dizer ou no teto de rodadas.
+  // Vários agentes na mesma conversa. Depois de cada mensagem do usuário todos respondem ao mesmo tempo, cada um lendo
+  // a conversa como estava. Em seguida vêm rodadas de reação, também simultâneas, em que cada um lê o que os outros
+  // disseram na rodada anterior: quem tem algo a acrescentar fala, quem não tem responde PASSO e a fala nem aparece.
+  // Acaba quando ninguém mais tem o que dizer ou no teto de rodadas.
   const ROOM_ROUNDS = 3, ROOM_PASS = /^[\s"'*_\[(]*passo[\s"'*_\]).!]*$/i;
   const roomSaid = (m: Msg) => (m.items || []).filter((i) => i.kind === "text").map((i: any) => i.text).join("\n").trim();
   function roomPrompt(c: Convo, acc: Acc, upTo: number, round: number) {
@@ -579,7 +586,9 @@ Você é ${eu} e está numa sala de conversa com o usuário e outros agentes de 
 
 Fale como colega numa conversa de trabalho, não como relatório: curto, direto, em português, sem repetir o que já foi dito e sem se apresentar. Responda ao usuário e aos colegas pelo nome quando fizer sentido. Concordou, diga em uma linha. Discordou, diga por quê. Viu algo que ninguém viu, acrescente. Quando houver trabalho a fazer, combinem quem pega o quê antes de mexer: diga a parte que você pega e não mexa na parte que outro já pegou.
 
-${round === 0 ? "O usuário acabou de falar. É a sua vez de responder a ele, levando em conta o que os colegas já disseram nesta rodada." : "Todos já falaram nesta rodada. É a sua vez de reagir ao que os colegas disseram."} Se você não tem nada de novo a acrescentar agora, responda somente a palavra PASSO.
+${round === 0
+  ? "O usuário acabou de falar e todos os colegas estão respondendo ao mesmo tempo que você, sem ver a sua resposta: você lê a deles na próxima rodada. Responda ao usuário. Se for trabalho de mexer em arquivo, nesta primeira rodada NÃO mexa em nada: diga qual parte você pega e por quê, para a divisão fechar na rodada seguinte sem dois mexendo no mesmo arquivo."
+  : "Todos falaram ao mesmo tempo na rodada anterior e agora você lê o que cada um disse. Reaja: feche a divisão com os colegas (se dois quiseram a mesma parte, fica com quem aparece primeiro na conversa e o outro escolhe outra) e então faça a sua parte, mexendo só nos arquivos dela."} Se você não tem nada de novo a acrescentar agora, responda somente a palavra PASSO.
 </sala>
 
 <conversa>
@@ -597,12 +606,12 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
       await d.prepare(c);
       const b = c.brain ? await d.brainContext(userText, c.cwd.split("/").pop() || "") : null;
       rounds: for (let round = 0; round < ROOM_ROUNDS; round++) {
-        let spoke = 0;
-        // quem já teve a vez nesta rodada, e as contas marcadas pelo nome: o rodízio de um provedor não repete nenhuma delas
+        // o usuário falou no meio: a sala para e ouve, sem esperar as rodadas que faltam
+        if (c.queue?.length) break;
+        // Quem fala nesta rodada. As contas marcadas pelo nome e as já escaladas não se repetem no rodízio de um provedor.
         const naVez = new Set<string>(), marcadas = c.room!.filter((t) => !t.startsWith("pool:"));
+        const vez: { acc: Acc; msg: Msg }[] = [], inicio = c.messages.length;
         for (const target of c.room!) {
-          // o usuário falou no meio: a sala para de se revezar e ouve, sem esperar o fim das rodadas
-          if (c.queue?.length) break rounds;
           const pool = target.startsWith("pool:");
           const acc = pool ? d.pick(target.slice(5), [...marcadas, ...naVez]) : d.account(target);
           // rodízio sem conta sobrando porque as do provedor já estão na sala pelo nome: não é falta, só não há mais ninguém
@@ -612,33 +621,45 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
           const msg: Msg = { role: "assistant", at: Date.now(), items: [], state: "working", room: true, accountId: acc?.id };
           if (!acc || !d.isReady(acc)) {
             // quem está fora (sem login ou no limite) avisa uma vez por mensagem do usuário e a conversa segue sem ele
-            if (round === 0) { c.messages.push({ ...msg, accountId: acc?.id || (target.startsWith("pool:") ? undefined : target), state: "error", error: `${target.startsWith("pool:") ? provName(target.slice(5)) : d.accName(acc || d.account(target))} está fora desta rodada: sem conta pronta agora.`, endedAt: Date.now() }); touch(c); }
+            if (round === 0) c.messages.push({ ...msg, accountId: acc?.id || (pool ? undefined : target), state: "error", error: `${pool ? provName(target.slice(5)) : d.accName(acc || d.account(target))} está fora desta rodada: sem conta pronta agora.`, endedAt: Date.now() });
             continue;
           }
           c.messages.push(msg);
-          c.accountId = acc.id;
-          c.provider = acc.provider;
-          touch(c);
-          const prompt = roomPrompt(c, acc, c.messages.length - 1, round);
+          vez.push({ acc, msg });
+        }
+        touch(c);
+        if (!vez.length) break;
+        // A rodada inteira fala ao mesmo tempo: todos leem a conversa como estava antes da rodada, e o que cada um
+        // disse os outros leem na rodada seguinte. Em série, doze agentes levavam doze vezes o tempo de um.
+        const falas = await Promise.all(vez.map(async ({ acc, msg }) => {
+          const prompt = roomPrompt(c, acc, inicio, round);
           msg.brain = round === 0 ? b?.notes : undefined;
           msg.sent = { ask: userText.length, brain: round === 0 ? b?.text?.length || 0 : 0, handoff: prompt.length, resumed: false };
           // tentativa 1 em diante não repete o aviso de "não pede permissão passo a passo": na sala ele sairia em toda fala
-          const r = await exec(c, msg, acc, prompt, round === 0 ? b?.text : undefined, null, c.messages.some((m) => m !== msg && m.room && m.accountId === acc.id) ? 1 : 0, round === 0 ? (userMsg.attachments || []).filter((a) => pastedText(a) == null) : [], undefined, userText);
+          const r = await exec(c, msg, acc, prompt, round === 0 ? b?.text : undefined, null, round > 0 || c.messages.slice(0, inicio).some((m) => m.room && m.accountId === acc.id) ? 1 : 0, round === 0 ? (userMsg.attachments || []).filter((a) => pastedText(a) == null) : [], undefined, userText).catch((e: any) => ({ ok: false, limit: false, stopped: false, produced: false, err: String(e?.message || e), sessionId: "" }));
           msg.endedAt = Date.now();
-          if (r.stopped) { msg.state = "stopped"; last = msg; halted = true; touch(c); break rounds; }
+          if (r.stopped) { msg.state = "stopped"; touch(c); return "parou" as const; }
           if (!r.ok) {
             if (r.limit) d.markLimited(acc, r.err);
             msg.state = "error";
             msg.error = r.limit ? `${d.accName(acc)} bateu no limite e saiu desta rodada.` : r.err || "O agente terminou com erro.";
-            failed = true; touch(c); continue;
+            touch(c); return "erro" as const;
           }
           const worked = msg.items!.some((i) => i.kind === "cmd" || i.kind === "files" || i.kind === "tool");
-          if (ROOM_PASS.test(roomSaid(msg)) && !worked) { c.messages.splice(c.messages.indexOf(msg), 1); epochs.set(c.id, (epochs.get(c.id) || 0) + 1); touch(c); continue; } // a fala some: quem assiste recebe a conversa de novo
-          msg.state = "done"; last = msg; spoke++;
-          touch(c);
-        }
+          if (ROOM_PASS.test(roomSaid(msg)) && !worked) return "passou" as const;
+          msg.state = "done"; touch(c);
+          return "falou" as const;
+        }));
+        // quem passou some da conversa, de uma vez, depois que a rodada inteira terminou
+        const passaram = vez.filter((_, k) => falas[k] === "passou").map((v) => v.msg);
+        if (passaram.length) { c.messages = c.messages.filter((m) => !passaram.includes(m)); epochs.set(c.id, (epochs.get(c.id) || 0) + 1); }
+        const disseram = vez.filter((_, k) => falas[k] === "falou");
+        if (disseram.length) { last = disseram.at(-1)!.msg; c.accountId = disseram.at(-1)!.acc.id; c.provider = disseram.at(-1)!.acc.provider; }
+        if (falas.includes("erro")) failed = true;
+        touch(c);
+        if (falas.includes("parou")) { halted = true; break rounds; }
         // sem ninguém para reagir (um só falou) ou sem nada novo na rodada: a sala se cala e espera o usuário
-        if (spoke === 0 || (round === 0 && spoke < 2)) break;
+        if (!disseram.length || (round === 0 && disseram.length < 2)) break;
       }
     } catch (e: any) {
       c.messages.push({ role: "assistant", at: Date.now(), endedAt: Date.now(), items: [], room: true, state: "error", error: String(e?.message || e) });
@@ -846,15 +867,16 @@ Responda em português, com uma lista numerada do mais grave para o menos. Cada 
     decide(id: string, req: string, decision: "allow" | "always" | "deny") {
       const c = convos.get(id), fn = asks.get(id)?.get(req);
       if (!c || !fn) throw new Error("este pedido já foi respondido");
-      if (decision === "always") { const it = c.messages.at(-1)?.items?.find((i) => i.kind === "ask" && i.req === req) as any; if (it) c.allow = [...new Set([...(c.allow || []), it.tool])]; }
+      const pedido = (r: string) => { for (let i = c.messages.length - 1; i >= 0 && i >= c.messages.length - 40; i--) { const it = c.messages[i].items?.find((x) => x.kind === "ask" && x.req === r) as any; if (it) return it; } return null; };
+      if (decision === "always") { const it = pedido(req); if (it) c.allow = [...new Set([...(c.allow || []), it.tool])]; }
       fn(decision !== "deny");
       // o que mais estiver na fila da mesma ferramenta sai junto
-      if (decision === "always") for (const [r, f] of asks.get(id) || []) { const it = c.messages.at(-1)?.items?.find((i) => i.kind === "ask" && i.req === r) as any; if (it && c.allow!.includes(it.tool)) f(true); }
+      if (decision === "always") for (const [r, f] of [...(asks.get(id) || [])]) { const it = pedido(r); if (it && c.allow!.includes(it.tool)) f(true); }
     },
     // conversa trazida do histórico de outro programa, já montada
     adopt(c: Convo) { if (!convos.has(c.id)) { convos.set(c.id, c); touch(c); } return convos.get(c.id)!; },
     natives: () => [...convos.values()].map((c) => c.native?.sessionId).filter(Boolean) as string[],
-    stop(id: string) { const h = procs.get(id); if (h) { h.stopped = true; h.proc.kill(); } },
+    stop(id: string) { for (const h of procs.get(id) || []) { h.stopped = true; h.proc.kill(); } },
     remove(id: string) { this.stop(id); convos.delete(id); rmSync(join(d.dir, `${id}.json`), { force: true }); for (const kick of watchers.get(id) || []) kick(); },
     list: () => [...convos.values()].map((c) => ({ id: c.id, title: c.title, cwd: c.cwd, at: c.at, working: c.working, waiting: !!c.waiting, accountId: c.accountId, target: c.target, startedAt: c.messages.at(-1)?.at || c.at, imported: c.imported })),
     // conversa mexida há pouco ainda conta: o usuário pode responder a qualquer momento
