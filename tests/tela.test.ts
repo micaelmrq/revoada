@@ -814,6 +814,9 @@ describe.skipIf(!CHROME)("tela", () => {
   test("apps conectados mostram a marca do app conhecido e a inicial do resto, e Todos os agentes chama um rodízio por provedor", async () => {
     expect(await page(`return ["linear", "linear-pulse", "chrome-devtools", "figma", "aws-mcp", "node_repl", "heroui-pro", "pluma", "arara"].map((n) => appSelo(n).includes("<svg") ? "marca" : appSelo(n).replace(/<[^>]+>/g, ""))`))
       .toEqual(["marca", "marca", "marca", "marca", "marca", "marca", "marca", "p", "a"]);
+    // todo app do catálogo tem marca: traço de uma cor, ou o ícone do fornecedor quando a marca não cabe num traço
+    const marcas = await page(`const t = await api("tools"); return t.catalogo.map((a) => [a.id, appSelo(a.id).includes("<svg") ? "traço" : appSelo(a.id).includes("<img") ? "ícone" : "inicial"]).filter(([, m]) => m !== "traço")`);
+    expect(marcas).toEqual([["context7", "ícone"], ["deepwiki", "inicial"], ["granola", "ícone"], ["fireflies", "ícone"], ["monday", "ícone"], ["jotform", "ícone"], ["attio", "ícone"], ["bling", "ícone"]]);
     await page(`go({ type: "home" }); picked.clear(); paintTargets(); togglePop("popTarget");`);
     const prontos = await page(`return S.providers.filter((p) => p.installed && S.accounts.some((a) => a.provider === p.id && ready(a))).map((p) => "pool:" + p.id)`);
     if (prontos.length > 1) {
