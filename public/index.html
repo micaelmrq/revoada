@@ -358,6 +358,25 @@
   .att img, .att .doc { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; background: var(--sup2); display: grid; place-items: center; color: var(--tinta2); font-size: 10px; flex: none; }
   .att span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .att button { color: var(--tinta3); padding: 0 2px; } .att button:hover { color: var(--erro); }
+  /* na caixa de pedido: cartões como os do Claude, a imagem em miniatura quadrada e o × no canto */
+  #atts { gap: 10px; padding: 2px 0 12px; }
+  #atts .att { position: relative; padding: 0; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio2); background: var(--fundo); height: 72px; max-width: 200px; overflow: visible; }
+  #atts .att.foto { width: 72px; }
+  #atts .att.foto img { width: 72px; height: 72px; border-radius: 12px; display: block; outline: 1px solid var(--fio2); outline-offset: -1px; }
+  #atts .att.foto > span { display: none; }
+  #atts .att:not(.foto) { padding: 0 14px 0 10px; gap: 10px; }
+  #atts .att .doc { width: 40px; height: 40px; border-radius: 9px; text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
+  #atts .att.texto { width: 148px; padding: 8px 10px; flex-direction: column; align-items: stretch; gap: 4px; }
+  #atts .att.texto .trecho { flex: 1; min-height: 0; font-size: 9.5px; line-height: 1.35; color: var(--tinta3); white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  #atts .att.texto > span:not(.trecho) { font-size: 11px; color: var(--tinta2); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; flex: none; }
+  #atts .att button { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--sup2); color: var(--tinta); box-shadow: 0 0 0 1px var(--fio2); font-size: 14px; line-height: 1; opacity: 0; transition: opacity .12s ease; }
+  #atts .att button::before { content: ""; position: absolute; inset: -9px; }
+  #atts .att:hover button, #atts .att button:focus-visible { opacity: 1; } #atts .att button:hover { color: var(--tinta); background: var(--fio2); }
+  @media (hover: none) { #atts .att button { opacity: 1; } }
+  #atts .att.subindo { color: var(--tinta3); }
+  .gira { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--fio2); border-top-color: var(--tinta2); display: block; animation: gira .8s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .gira { animation: none; } }
 
   /* terminal e respostas em paralelo */
   #stage { flex: 1; min-height: 0; padding: 16px 20px 20px; display: flex; }
@@ -388,6 +407,7 @@
   .bubble { font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-width: 64ch; border-radius: 6px; }
   .bubble.editing { outline: 1.5px dashed var(--tinta2); outline-offset: 4px; }
   .m.user .atts { padding: 0 0 4px; }
+  .m.user .att .trecho { display: none; }
   .m.user .att img { width: 72px; height: 72px; border-radius: 9px; } .m.user .att { padding: 4px; }
   .md { line-height: 1.55; font-size: 14.5px; min-width: 0; overflow-wrap: anywhere; }
   .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
@@ -730,7 +750,7 @@
         <input type="file" id="filePick" multiple hidden>
         <textarea id="prompt" rows="1" placeholder="Peça qualquer coisa" aria-label="Pedido"></textarea>
         <div class="row">
-          <button class="chip" id="attChip" title="Anexar imagem ou arquivo. Também dá para colar um print ou arrastar para cá." aria-label="Anexar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7-7l8.2-8.3a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/></svg></button>
+          <button class="chip" id="attChip" title="Anexar imagem ou arquivo. Também dá para colar um print ou arrastar para cá." aria-label="Anexar imagem ou arquivo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <span class="sp"></span>
           <button class="send" id="send" title="Enviar (Enter)" aria-label="Enviar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
         </div>
@@ -1412,7 +1432,7 @@ function paintComposer() {
   $("targetChip").innerHTML = `<span class="lb">${esc(who)}</span>${ICON.down}`; $("targetChip").title = who;
   $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro</span>`; $("brainChip").classList.toggle("on", useBrain);
   $("modeChip").innerHTML = `${ICON.edit}<span class="lb">${MODES[mode]}</span>`; $("modeChip").classList.toggle("on", mode !== "read"); $("modeChip").title = MODE_HINT[mode] + " Clique para trocar.";
-  $("attChip").style.display = ts.length > 1 || terminal ? "none" : "inline-flex";
+  $("attChip").style.display = "inline-flex"; // anexo vale em todo modo: numa conta vai como imagem, em paralelo e no terminal vai o caminho do arquivo
   if (!inChat && repo.cwd !== cwd()) { repo = { cwd: cwd(), repo: false, busy: false }; api("repo?cwd=" + encodeURIComponent(cwd())).then((r) => { if (repo.cwd === cwd()) { repo = { cwd: cwd(), ...r }; paintComposer(); } }).catch(() => {}); }
   const iso = willIsolate(ts);
   $("isoChip").style.display = !inChat && repo.repo && !terminal ? "inline-flex" : "none";
@@ -1656,23 +1676,62 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault(); b.click();
 });
 
-// anexos: botão, colar e arrastar
+// anexos: botão, colar e arrastar. Ficam em cartões dentro da caixa, acima do texto, com o × no canto.
 const attUrl = (a) => `/api/attach/${encodeURIComponent(a.path.split("/").pop())}`;
-const attHtml = (a, i) => `<span class="att" title="${esc(a.name)}">${a.image ? `<img src="${attUrl(a)}" alt="">` : `<span class="doc">${esc((a.name.split(".").pop() || "").slice(0, 4))}</span>`}<span>${esc(a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover anexo">×</button>`}</span>`;
+const attExt = (a) => (a.name.includes(".") ? a.name.split(".").pop() : "").slice(0, 4);
+// na mensagem enviada (i nulo) o cartão é só leitura; na caixa ganha o × e mostra o que ainda está subindo
+const attHtml = (a, i) => a.pending ? `<span class="att subindo" title="${esc(a.name)}"><span class="doc"><i class="gira"></i></span><span>${esc(a.name)}</span></span>`
+  : `<span class="att ${a.image ? "foto" : a.colado ? "texto" : ""}" title="${esc(a.name)}">${a.image ? `<img src="${attUrl(a)}" alt="${esc(a.name)}">` : a.colado ? `<span class="trecho">${esc(a.colado)}</span>` : `<span class="doc">${esc(attExt(a))}</span>`}<span>${esc(a.colado ? "Texto colado" : a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover ${esc(a.colado ? "texto colado" : a.name)}">×</button>`}</span>`;
 function paintAtts() { $("atts").innerHTML = attached.map(attHtml).join(""); paintSend(); }
-async function addFiles(files) {
-  for (const f of files) {
+// Print copiado no Mac chega como TIFF sem compressão (dezenas de MB) e foto de celular passa fácil do limite: a imagem é
+// redesenhada em PNG, e se ainda ficar pesada, reduzida e passada para JPEG. O agente lê melhor assim e o envio não estoura.
+const IMG_LADO = 2576, IMG_PESO = 4_500_000, ANEXO_MAX = 25_000_000;
+async function enxugaImagem(f) {
+  const leve = /^image\/(png|jpe?g|gif|webp)$/.test(f.type) && f.size <= IMG_PESO;
+  if (!f.type.startsWith("image/") || f.type === "image/gif" || f.type === "image/svg+xml" || leve) return f;
+  try {
+    const bmp = await createImageBitmap(f), k = Math.min(1, IMG_LADO / Math.max(bmp.width, bmp.height));
+    const tela = Object.assign(document.createElement("canvas"), { width: Math.round(bmp.width * k), height: Math.round(bmp.height * k) });
+    tela.getContext("2d").drawImage(bmp, 0, 0, tela.width, tela.height); bmp.close?.();
+    const sai = (tipo, q) => new Promise((ok) => tela.toBlob(ok, tipo, q));
+    let blob = await sai("image/png");
+    if (!blob || blob.size > IMG_PESO) blob = (await sai("image/jpeg", 0.88)) || blob;
+    if (!blob) return f;
+    const nome = (f.name || `print-${Date.now()}`).replace(/\.[a-z0-9]+$/i, "") + (blob.type === "image/jpeg" ? ".jpg" : ".png");
+    return new File([blob], nome, { type: blob.type });
+  } catch { return f; } // formato que este navegador não abre: segue como arquivo comum
+}
+async function addFiles(files, extra = {}) {
+  for (const original of files) {
     if (attached.length >= 10) { toast("No máximo 10 anexos por mensagem."); break; }
-    const r = await fetch("/api/attach", { method: "POST", headers: { "content-type": f.type || "application/octet-stream", "x-name": encodeURIComponent(f.name || `print-${Date.now()}.png`) }, body: f });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(j.error || "Não consegui anexar."); continue; }
-    attached.push(j); paintAtts();
+    const vaga = { pending: true, name: original.name || "imagem" };
+    attached.push(vaga); paintAtts();
+    const tira = () => { const k = attached.indexOf(vaga); if (k >= 0) attached.splice(k, 1); return k; };
+    const f = await enxugaImagem(original);
+    if (f.size > ANEXO_MAX) { tira(); paintAtts(); toast(`${f.name || "O arquivo"} tem ${Math.round(f.size / 1e6)} MB. O limite é 25 MB por anexo.`); continue; }
+    const r = await fetch("/api/attach", { method: "POST", headers: { "content-type": f.type || "application/octet-stream", "x-name": encodeURIComponent(f.name || `print-${Date.now()}.png`) }, body: f }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    const k = tira();
+    if (!r?.ok) { paintAtts(); toast(j.error || "Não consegui anexar."); continue; }
+    if (k >= 0) attached.splice(k, 0, { ...j, ...extra }); // a pessoa pode ter enviado ou limpado a caixa enquanto subia
+    paintAtts();
   }
 }
+// a área de transferência costuma trazer a mesma imagem em vários formatos (TIFF e PNG): fica uma, de preferência a PNG
+const semRepetir = (fs) => { const imgs = fs.filter((f) => f.type.startsWith("image/")), resto = fs.filter((f) => !f.type.startsWith("image/")); return imgs.length > 1 && imgs.every((f) => !f.name || /^image\./i.test(f.name)) ? [imgs.find((f) => f.type === "image/png") || imgs[0], ...resto] : fs; };
+// texto grande colado vira anexo, como no Claude: a caixa continua curta e o agente lê o arquivo inteiro
+const COLA_LETRAS = 4000, COLA_LINHAS = 60;
 $("attChip").onclick = () => $("filePick").click();
 $("filePick").onchange = () => { addFiles([...$("filePick").files]); $("filePick").value = ""; };
-$("atts").onclick = (e) => { const b = e.target.closest("[data-rm-att]"); if (b) { attached.splice(+b.dataset.rmAtt, 1); paintAtts(); } };
-$("prompt").addEventListener("paste", (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
+$("atts").onclick = (e) => { const b = e.target.closest("[data-rm-att]"); if (b) { attached.splice(+b.dataset.rmAtt, 1); paintAtts(); $("prompt").focus(); } };
+$("prompt").addEventListener("paste", (e) => {
+  const fs = semRepetir([...(e.clipboardData?.files || [])]);
+  if (fs.length) { e.preventDefault(); return addFiles(fs); }
+  const texto = e.clipboardData?.getData("text/plain") || "";
+  if (texto.length < COLA_LETRAS && texto.split("\n").length < COLA_LINHAS) return;
+  e.preventDefault();
+  addFiles([new File([texto], `texto-colado-${Date.now()}.txt`, { type: "text/plain" })], { colado: texto.trim().slice(0, 240) });
+});
 for (const ev of ["dragenter", "dragover"]) $("composer").addEventListener(ev, (e) => { if (e.dataTransfer?.types.includes("Files")) { e.preventDefault(); $("composer").classList.add("drop"); } });
 for (const ev of ["dragleave", "drop"]) $("composer").addEventListener(ev, (e) => { $("composer").classList.remove("drop"); if (ev === "drop" && e.dataTransfer?.files.length) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
 $("termChip").onclick = () => { terminal = !terminal; if (terminal) supervisor = false; paintComposer(); };
@@ -1819,6 +1878,7 @@ $("send").onclick = async () => {
   if (view.type === "chat" && chat?.working && !$("prompt").value.trim() && !attached.length) return api(`convos/${chat.id}/stop`, "POST", {});
   const ts = targets(); if (!ts.length) return toast("Nenhuma conta pronta. Faça login em Contas.");
   const text = $("prompt").value;
+  if (attached.some((x) => x.pending)) return toast("Espere o anexo terminar de subir.");
   const clear = () => { $("prompt").value = ""; $("prompt").style.height = "auto"; $("notes").textContent = ""; attached = []; paintAtts(); };
   if (view.type === "chat") {
     if (!text.trim() && !attached.length) return;
@@ -1831,7 +1891,7 @@ $("send").onclick = async () => {
     const m = await api("missions", "POST", { prompt: text, cwd: cwd(), targets: ts });
     supervisor = false; clear(); await refresh(); return go({ type: "mission", id: m.id });
   }
-  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: ts.length === 1 && !terminal ? attached : [], model: curChoice().model || null, effort: curChoice().effort || null });
+  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: attached, model: curChoice().model || null, effort: curChoice().effort || null });
   isolate = null; repo.cwd = "";
   clear(); await refresh(); go({ type: r.kind, id: r.id });
 };
