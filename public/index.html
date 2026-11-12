@@ -404,7 +404,14 @@
   #atts .att:not(.foto) { padding: 0 14px 0 10px; gap: 10px; }
   #atts .att .doc { width: 40px; height: 40px; border-radius: 9px; text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
   #atts .att.texto { width: 148px; padding: 8px 10px; flex-direction: column; align-items: stretch; gap: 4px; }
-  #atts .att.texto .trecho { flex: 1; min-height: 0; font-size: 9.5px; line-height: 1.35; color: var(--tinta3); white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  #atts .att.texto .trecho { flex: 1; min-height: 0; font-size: 9.5px; line-height: 1.35; color: var(--tinta3); white-space: pre-line; overflow: hidden; }
+  .att.texto { cursor: pointer; } .att.texto:hover { background: var(--sup2); }
+  /* na mensagem enviada o texto colado continua um cartão que abre, com as primeiras linhas como foram coladas */
+  .m.user .att.texto { width: 220px; height: 84px; padding: 9px 11px; flex-direction: column; align-items: stretch; gap: 5px; border-radius: 12px; max-width: none; }
+  .m.user .att.texto .trecho { display: block; flex: 1; min-height: 0; overflow: hidden; white-space: pre-line; font-size: 11px; line-height: 1.4; color: var(--tinta3); }
+  .m.user .att.texto > span:not(.trecho) { flex: none; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--tinta2); }
+  #textoDlg { width: min(820px, 94vw); max-height: 86vh; display: none; flex-direction: column; } #textoDlg[open] { display: flex; }
+  #textoCorpo { margin: 16px 0 0; padding: 16px 18px; background: var(--sup); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 13.5px/1.6 "Geist", ui-sans-serif, system-ui, sans-serif; color: var(--tinta); min-height: 120px; -webkit-user-select: text; user-select: text; tab-size: 2; }
   #atts .att.texto > span:not(.trecho) { font-size: 11px; color: var(--tinta2); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; flex: none; }
   #atts .att button { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--sup2); color: var(--tinta); box-shadow: 0 0 0 1px var(--fio2); font-size: 14px; line-height: 1; opacity: 0; transition: opacity .12s ease; }
   #atts .att button::before { content: ""; position: absolute; inset: -9px; }
@@ -444,7 +451,7 @@
   .bubble { font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-width: 64ch; border-radius: 6px; }
   .bubble.editing { outline: 1.5px dashed var(--tinta2); outline-offset: 4px; }
   .m.user .atts { padding: 0 0 4px; }
-  .m.user .att .trecho { display: none; }
+  .m.user .att:not(.texto) .trecho { display: none; }
   .m.user .att img { width: 72px; height: 72px; border-radius: 9px; } .m.user .att { padding: 4px; }
   .md { line-height: 1.55; font-size: 14.5px; min-width: 0; overflow-wrap: anywhere; }
   .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
@@ -832,6 +839,7 @@
 <dialog id="planDlg"><header><div><h2>Plano da tarefa</h2><small id="planSub"></small></div><button class="ic-b" id="planClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="planBody"></div></dialog>
 <dialog id="diffDlg"><header><div><h2 id="diffTitle"></h2><small id="diffSub"></small></div><button class="ic-b" id="diffClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="diffBody"></div></dialog>
 <dialog id="phoneDlg"><header><div><h2>Acompanhar pelo celular</h2><small>Uma página leve, em outro aparelho, com o que os agentes estão fazendo.</small></div><button class="ic-b" id="phoneClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="phoneBody"></div></dialog>
+<dialog id="textoDlg"><header><div><h2>Texto colado</h2><small id="textoInfo"></small></div><span style="display:flex;gap:8px;align-items:center"><button class="btn line" id="textoCopia">Copiar</button><button class="ic-b" id="textoFecha" data-ic="x" aria-label="Fechar" title="Fechar"></button></span></header><pre id="textoCorpo" tabindex="0"></pre></dialog>
 <dialog id="appsDlg"><header><div><h2>Apps conectados</h2><small>Skills e servidores MCP da conta padrão de cada provedor, e o que as outras contas recebem.</small></div><button class="ic-b" id="appsClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="appsBody"></div></dialog>
 <div id="toast" role="status"></div>
 <div id="dica" role="tooltip" hidden></div>
@@ -1987,7 +1995,7 @@ const attUrl = (a) => `/api/attach/${encodeURIComponent(a.path.split("/").pop())
 const attExt = (a) => (a.name.includes(".") ? a.name.split(".").pop() : "").slice(0, 4);
 // na mensagem enviada (i nulo) o cartão é só leitura; na caixa ganha o × e mostra o que ainda está subindo
 const attHtml = (a, i) => a.pending ? `<span class="att subindo" title="${esc(a.name)}"><span class="doc"><i class="gira"></i></span><span>${esc(a.name)}</span></span>`
-  : `<span class="att ${a.image ? "foto" : a.colado ? "texto" : ""}" title="${esc(a.name)}">${a.image ? `<img src="${attUrl(a)}" alt="${esc(a.name)}">` : a.colado ? `<span class="trecho">${esc(a.colado)}</span>` : `<span class="doc">${esc(attExt(a))}</span>`}<span>${esc(a.colado ? "Texto colado" : a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover ${esc(a.colado ? "texto colado" : a.name)}">×</button>`}</span>`;
+  : `<span class="att ${a.image ? "foto" : a.colado ? "texto" : ""}" ${a.colado ? `data-ver-texto="${esc(attUrl(a))}" role="button" tabindex="0" aria-label="Abrir o texto colado"` : `title="${esc(a.name)}"`}>${a.image ? `<img src="${attUrl(a)}" alt="${esc(a.name)}">` : a.colado ? `<span class="trecho">${esc(a.colado)}</span>` : `<span class="doc">${esc(attExt(a))}</span>`}<span>${esc(a.colado ? "Texto colado" : a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover ${esc(a.colado ? "texto colado" : a.name)}">×</button>`}</span>`;
 function paintAtts() { $("atts").innerHTML = attached.map(attHtml).join(""); paintSend(); }
 // Print copiado no Mac chega como TIFF sem compressão (dezenas de MB) e foto de celular passa fácil do limite: a imagem é
 // redesenhada em PNG, e se ainda ficar pesada, reduzida e passada para JPEG. O agente lê melhor assim e o envio não estoura.
@@ -2023,6 +2031,18 @@ async function addFiles(files, extra = {}) {
     paintAtts();
   }
 }
+// o cartão de texto colado abre o texto inteiro, como foi colado, na caixa de pedido e nas mensagens já enviadas
+async function abreTexto(url) {
+  const t = await fetch(url).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+  if (t == null) return toast("Não consegui abrir este texto.");
+  $("textoCorpo").textContent = t;
+  $("textoInfo").textContent = `${plural(t.split("\n").length, "linha", "linhas")}, ${t.length.toLocaleString("pt-BR")} letras. O agente recebe este texto inteiro, com as quebras de linha.`;
+  $("textoDlg").showModal(); $("textoCorpo").scrollTop = 0;
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-rm-att]")) return; const c = e.target.closest("[data-ver-texto]"); if (c) abreTexto(c.dataset.verTexto); });
+document.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-ver-texto]")) { e.preventDefault(); abreTexto(e.target.dataset.verTexto); } });
+$("textoFecha").onclick = () => $("textoDlg").close();
+$("textoCopia").onclick = async () => { try { await navigator.clipboard.writeText($("textoCorpo").textContent); toast("Texto copiado."); } catch { toast("Não consegui copiar."); } };
 // a área de transferência costuma trazer a mesma imagem em vários formatos (TIFF e PNG): fica uma, de preferência a PNG
 const semRepetir = (fs) => { const imgs = fs.filter((f) => f.type.startsWith("image/")), resto = fs.filter((f) => !f.type.startsWith("image/")); return imgs.length > 1 && imgs.every((f) => !f.name || /^image\./i.test(f.name)) ? [imgs.find((f) => f.type === "image/png") || imgs[0], ...resto] : fs; };
 // texto grande colado vira anexo, como no Claude: a caixa continua curta e o agente lê o arquivo inteiro
@@ -2036,7 +2056,7 @@ $("prompt").addEventListener("paste", (e) => {
   const texto = e.clipboardData?.getData("text/plain") || "";
   if (texto.length < COLA_LETRAS && texto.split("\n").length < COLA_LINHAS) return;
   e.preventDefault();
-  addFiles([new File([texto], `texto-colado-${Date.now()}.txt`, { type: "text/plain" })], { colado: texto.trim().slice(0, 240) });
+  addFiles([new File([texto], `texto-colado-${Date.now()}.txt`, { type: "text/plain" })], { colado: texto.trim().split("\n").filter((l) => l.trim()).slice(0, 6).join("\n").slice(0, 320) });
 });
 for (const ev of ["dragenter", "dragover"]) $("composer").addEventListener(ev, (e) => { if (e.dataTransfer?.types.includes("Files")) { e.preventDefault(); $("composer").classList.add("drop"); } });
 for (const ev of ["dragleave", "drop"]) $("composer").addEventListener(ev, (e) => { $("composer").classList.remove("drop"); if (ev === "drop" && e.dataTransfer?.files.length) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });

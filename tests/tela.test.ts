@@ -866,6 +866,11 @@ describe.skipIf(!CHROME)("tela", () => {
       document.querySelector("#prompt").dispatchEvent(ev2);
       return { segurou: ev.defaultPrevented, campo: document.querySelector("#prompt").value, inteiro: texto === longo, mime: a.mime.split(";")[0], cartao: document.querySelector("#atts .att.texto")?.innerText.includes("TEXTO COLADO") || document.querySelector("#atts .att.texto")?.innerText.includes("Texto colado"), curtoLivre: !ev2.defaultPrevented };`);
     expect(colado).toEqual({ segurou: true, campo: "", inteiro: true, mime: "text/plain", cartao: true, curtoLivre: true });
+    // o cartão abre o texto inteiro, com as quebras de linha como foram coladas
+    await page(`document.querySelector("#atts .att.texto").click();`);
+    await until(`document.querySelector("#textoDlg").open`);
+    expect(await page(`const t = document.querySelector("#textoCorpo"); return [t.textContent.split("\\n").length, getComputedStyle(t).whiteSpace, document.querySelector("#textoInfo").textContent.startsWith("90 linhas"), document.querySelector("#atts .att.texto .trecho").textContent.split("\\n").length > 1]`)).toEqual([90, "pre-wrap", true, true]);
+    await page(`document.querySelector("#textoFecha").click();`);
     // o × tira o anexo
     await page(`document.querySelector("#atts [data-rm-att='0']").click();`);
     expect(await page(`return [attached.length, !!document.querySelector("#atts .att.foto")]`)).toEqual([1, false]);

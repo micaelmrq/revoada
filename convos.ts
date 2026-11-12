@@ -94,8 +94,23 @@ type Adapter = {
 };
 const inline = (prompt: string, ctx?: string) => (ctx ? `${ctx}\n\n${prompt}` : prompt);
 const clip = (s: unknown, n = OUTPUT_CHARS) => { const t = typeof s === "string" ? s : s == null ? "" : JSON.stringify(s); return t.length > n ? t.slice(0, n) + "\n[…]" : t; };
+// Texto grande colado na caixa vira arquivo só para a caixa não encher: para o agente ele volta como texto, dentro do
+// pedido, com as quebras de linha originais. Mandar só o caminho deixava o agente sem ler (pasta fora do projeto, ou
+// uma segunda leitura que ele não fazia). Acima do teto vai o caminho, como qualquer arquivo.
+const PASTED_RE = /-texto-colado-\d+\.txt$/, PASTED_MAX = 120_000;
+const pastedText = (f: Attachment, max = PASTED_MAX): string | null => {
+  if (f.image || !PASTED_RE.test(f.path)) return null;
+  try { const t = readFileSync(f.path, "utf8"); return t.length <= PASTED_MAX ? (t.length > max ? t.slice(0, max) + `\n[… o texto colado continua; o arquivo inteiro está em ${f.path}]` : t) : null; } catch { return null; }
+};
+const pastedBlock = (files: Attachment[], max?: number) => {
+  const ts = files.map((f) => pastedText(f, max)).filter((t): t is string => t != null);
+  return ts.length ? ts.map((t, i) => `<texto-colado${ts.length > 1 ? ` n="${i + 1}"` : ""}>\n${t}\n</texto-colado>`).join("\n\n") + "\n(Texto que o usuário colou junto com o pedido, com as quebras de linha originais.)" : "";
+};
 // anexo que o CLI não recebe de forma nativa vai como caminho pro agente abrir
-const withFiles = (prompt: string, files: Attachment[]) => (files.length ? `${prompt}\n\nArquivos anexados pelo usuário (abra pelo caminho):\n${files.map((f) => `- ${f.path}`).join("\n")}` : prompt);
+const withFiles = (prompt: string, files: Attachment[]) => {
+  const colado = pastedBlock(files), resto = files.filter((f) => pastedText(f) == null);
+  return [prompt, colado, resto.length ? `Arquivos anexados pelo usuário (abra pelo caminho):\n${resto.map((f) => `- ${f.path}`).join("\n")}` : ""].filter(Boolean).join("\n\n");
+};
 
 const CODEX_SANDBOX = { read: "read-only", ask: "workspace-write", edit: "workspace-write", full: "danger-full-access" };
 const ADAPTERS: Record<string, Adapter> = {
@@ -305,9 +320,13 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
 </plano-em-arquivo>`;
 
   // o que já foi dito e feito, pra uma conta nova continuar de onde a outra parou
-  const describe = (m: Msg) => {
+  // pasteMax: quanto de cada texto colado entra no relato (inteiro para a mensagem em resposta, um trecho para as antigas)
+  const describe = (m: Msg, pasteMax = 6_000) => {
     {
-      if (m.role === "user") return `[usuário]\n${clip(m.text, HANDOFF_MSG_CHARS)}${m.attachments?.length ? `\n(anexos: ${m.attachments.map((a) => a.path).join(", ")})` : ""}`;
+      if (m.role === "user") {
+        const files = m.attachments || [], colado = pastedBlock(files, pasteMax), resto = files.filter((a) => pastedText(a) == null);
+        return `[usuário]\n${clip(m.text, HANDOFF_MSG_CHARS)}${colado ? `\n${colado}` : ""}${resto.length ? `\n(anexos: ${resto.map((a) => a.path).join(", ")})` : ""}`;
+      }
       const acts: string[] = [];
       let text = "";
       for (const it of m.items || []) {
@@ -321,7 +340,7 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
     }
   };
   function handoff(c: Convo, upTo: number, partial: Msg, why: string): string | null {
-    const past = c.messages.slice(0, upTo).map(describe);
+    const past = c.messages.slice(0, upTo).map((m) => describe(m));
     if (partial.items?.some((i) => i.kind !== "note")) past.push(describe({ ...partial, state: "stopped" }) + "\n[esta resposta foi interrompida no meio; confira o estado dos arquivos antes de refazer algo]");
     if (!past.length) return null;
     // cabe no orçamento: sempre a primeira mensagem e o máximo das mais recentes
@@ -543,10 +562,17 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
   function roomPrompt(c: Convo, acc: Acc, upTo: number, round: number) {
     const eu = d.accName(acc);
     const colegas = [...new Set(c.room!.map((t) => (t.startsWith("pool:") ? provName(t.slice(5)) : d.accName(d.account(t)))))].filter((n) => n !== eu && !eu.startsWith(n + " ·"));
-    const past = c.messages.slice(0, upTo).filter((m) => m.role === "user" || m.state === "done" || m.state === "stopped").map(describe);
+    // a mensagem do usuário que está sendo respondida entra inteira, com o texto colado todo, e nunca é cortada pelo orçamento
+    const ouvidas = c.messages.slice(0, upTo).filter((m) => m.role === "user" || m.state === "done" || m.state === "stopped"), atual = ouvidas.findLastIndex((m) => m.role === "user");
+    const past = ouvidas.map((m, i) => describe(m, i === atual ? PASTED_MAX : undefined));
     const keep: string[] = [];
-    let used = past[0]?.length || 0;
-    for (let i = past.length - 1; i > 0 && used + past[i].length < HANDOFF_CHARS; i--) { keep.unshift(past[i]); used += past[i].length; }
+    let used = (past[0]?.length || 0) + (atual > 0 ? Math.min(past[atual].length, HANDOFF_CHARS) : 0);
+    let cheio = false;
+    for (let i = past.length - 1; i > 0; i--) {
+      if (i === atual) { keep.unshift(past[i]); continue; }
+      if (cheio || used + past[i].length >= HANDOFF_CHARS) { cheio = true; continue; } // estourou: daqui para trás só entra a mensagem em resposta
+      keep.unshift(past[i]); used += past[i].length;
+    }
     const skipped = past.length - 1 - keep.length;
     return `<sala>
 Você é ${eu} e está numa sala de conversa com o usuário e outros agentes de código: ${colegas.join(", ") || "nenhum outro no momento"}. Todos leem a mesma conversa e trabalham na mesma pasta.
@@ -595,7 +621,7 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
           msg.brain = round === 0 ? b?.notes : undefined;
           msg.sent = { ask: userText.length, brain: round === 0 ? b?.text?.length || 0 : 0, handoff: prompt.length, resumed: false };
           // tentativa 1 em diante não repete o aviso de "não pede permissão passo a passo": na sala ele sairia em toda fala
-          const r = await exec(c, msg, acc, prompt, round === 0 ? b?.text : undefined, null, c.messages.some((m) => m !== msg && m.room && m.accountId === acc.id) ? 1 : 0, round === 0 ? userMsg.attachments || [] : [], undefined, userText);
+          const r = await exec(c, msg, acc, prompt, round === 0 ? b?.text : undefined, null, c.messages.some((m) => m !== msg && m.room && m.accountId === acc.id) ? 1 : 0, round === 0 ? (userMsg.attachments || []).filter((a) => pastedText(a) == null) : [], undefined, userText);
           msg.endedAt = Date.now();
           if (r.stopped) { msg.state = "stopped"; last = msg; halted = true; touch(c); break rounds; }
           if (!r.ok) {

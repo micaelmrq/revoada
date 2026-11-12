@@ -239,6 +239,14 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [{ ...att, path: "/etc/passwd" }] })))).toContain("imagens=0");
   }, SLOW);
 
+  test("texto colado chega ao agente como texto, com as linhas, e arquivo comum segue como caminho", async () => {
+    const sobe = async (nome: string, corpo: string) => (await (await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": nome }, body: corpo })).json()) as any;
+    const colado = await sobe("texto-colado-1731380000000.txt", "linha um\nlinha dois\n\nlinha quatro"), comum = await sobe("ata.txt", "a\nb\nc\nd\ne\nf\ng");
+    expect(texts(await idle(await chat("claude-padrao", "leia", { attachments: [colado] })))).toContain("colado=4;");
+    // arquivo com outro nome não é despejado no pedido: o agente abre pelo caminho
+    expect(texts(await idle(await chat("claude-padrao", "leia", { attachments: [comum] })))).toContain("colado=0;");
+  }, SLOW);
+
   test("sala: os agentes falam um por vez na mesma conversa, leem uns aos outros, e quem não tem o que dizer passa", async () => {
     const falas = (c: any) => c.messages.filter((m: any) => m.role === "assistant").map((m: any) => m.items.filter((x: any) => x.kind === "text").map((x: any) => x.text).join(" "));
     const colegaId = (await post("accounts", { provider: "codex", label: "da-sala" })).id; // a conta padrão do Codex de mentira vive no limite
