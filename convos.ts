@@ -572,8 +572,15 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
       const b = c.brain ? await d.brainContext(userText, c.cwd.split("/").pop() || "") : null;
       rounds: for (let round = 0; round < ROOM_ROUNDS; round++) {
         let spoke = 0;
+        // quem já teve a vez nesta rodada, e as contas marcadas pelo nome: o rodízio de um provedor não repete nenhuma delas
+        const naVez = new Set<string>(), marcadas = c.room!.filter((t) => !t.startsWith("pool:"));
         for (const target of c.room!) {
-          const acc = target.startsWith("pool:") ? d.pick(target.slice(5), []) : d.account(target);
+          const pool = target.startsWith("pool:");
+          const acc = pool ? d.pick(target.slice(5), [...marcadas, ...naVez]) : d.account(target);
+          // rodízio sem conta sobrando porque as do provedor já estão na sala pelo nome: não é falta, só não há mais ninguém
+          if (pool && !acc && (marcadas.some((id) => d.account(id)?.provider === target.slice(5)) || [...naVez].some((id) => d.account(id)?.provider === target.slice(5)))) continue;
+          if (acc && naVez.has(acc.id)) continue;
+          if (acc) naVez.add(acc.id);
           const msg: Msg = { role: "assistant", at: Date.now(), items: [], state: "working", room: true, accountId: acc?.id };
           if (!acc || !d.isReady(acc)) {
             // quem está fora (sem login ou no limite) avisa uma vez por mensagem do usuário e a conversa segue sem ele

@@ -259,11 +259,17 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(c.messages.filter((m: any) => m.role === "user").length).toBe(2);
   }, SLOW);
 
-  test("sala: menos de dois agentes ou mais que o teto é recusado, e conta fora da rodada avisa sem travar os outros", async () => {
+  test("sala: menos de dois agentes é recusado, não há teto, e conta fora da rodada avisa sem travar os outros", async () => {
     expect((await api("chat", "POST", { prompt: "x", targets: ["claude-padrao", "claude-padrao"], room: true, cwd: HOME })).body.error).toContain("pelo menos dois");
     const s = await get("state"), outra = s.accounts.find((a: any) => a.provider === "codex" && a.id !== "codex-padrao" && a.status.ok).id;
-    const muitos = ["claude-padrao", "codex-padrao", outra, "pool:claude", "pool:codex", "pool:gemini", "pool:grok"];
-    expect((await api("chat", "POST", { prompt: "x", targets: muitos, room: true, cwd: HOME })).body.error).toContain("até 6 agentes");
+    // sem teto de agentes: sete alvos entram, e o rodízio não repete conta que já está na sala pelo nome
+    const muitos = ["claude-padrao", "pool:claude", outra, "pool:codex", "codex-padrao", "pool:gemini", "pool:grok"];
+    const cheia = await post("chat", { prompt: "todo mundo", targets: muitos, room: true, cwd: HOME, brain: false, mode: "read" });
+    const todos = await idle(cheia.id), quem = todos.messages.filter((m: any) => m.role === "assistant" && m.state === "done").map((m: any) => m.accountId);
+    expect(todos.room).toEqual(muitos);
+    expect(quem.filter((id: string) => id === "claude-padrao").length).toBe(1);
+    expect(new Set(quem).size).toBe(quem.length);
+    expect(quem).toContain(outra);
     // o Gemini não tem conta pronta no teste e a conta padrão do Codex está no limite: os dois avisam e o resto conversa
     const r = await post("chat", { prompt: "sigam sem eles", targets: ["claude-padrao", "pool:gemini", "codex-padrao", outra], room: true, cwd: HOME, brain: false, mode: "read" });
     const c = await idle(r.id), respostas = c.messages.filter((m: any) => m.role === "assistant");
