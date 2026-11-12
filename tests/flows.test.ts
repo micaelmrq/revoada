@@ -523,6 +523,96 @@ describe("skills e MCP em todas as contas", () => {
   }, SLOW);
 });
 
+describe("instalar e remover apps (servidores MCP) pela rota", () => {
+  const claudeTem = () => JSON.parse(readFileSync(join(HOME, ".claude.json"), "utf8")).mcpServers;
+  const codexTem = () => (Bun.TOML.parse(readFileSync(join(HOME, ".codex/config.toml"), "utf8")) as any).mcp_servers || {};
+  const estado = async (name: string) => (await get("tools/status"))[name] || {};
+
+  test("pedido errado não chega ao CLI: nome, endereço, comando, catálogo e agente são conferidos antes", async () => {
+    const recusa = async (body: unknown) => { const r = await api("tools/install", "POST", body); return [r.status, r.body.error]; };
+    expect(await recusa({ name: "Tem Espaço", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("letras minúsculas")]);
+    expect(await recusa({ name: "--scope", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("letras minúsculas")]);
+    expect(await recusa({ name: "revoada", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("própria Revoada")]);
+    expect(await recusa({ name: "ok", endereco: "" })).toEqual([400, expect.stringContaining("Escreva o endereço")]);
+    expect(await recusa({ name: "ok", endereco: "http://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("https://")]);
+    expect(await recusa({ name: "ok", endereco: "file:///etc/passwd" })).toEqual([400, expect.stringContaining("https://")]);
+    expect(await recusa({ name: "ok", endereco: "https://dono:senha@mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("usuário nem senha")]);
+    expect(await recusa({ name: "ok", endereco: "npx 'aspas abertas" })).toEqual([400, expect.stringContaining("aspas sem fechar")]);
+    expect(await recusa({ name: "ok", endereco: "--flag perigosa" })).toEqual([400, expect.stringContaining("nome de um programa")]);
+    expect(await recusa({ app: "nao-esta-no-catalogo" })).toEqual([400, expect.stringContaining("catálogo")]);
+    expect(await recusa({ app: "linear", providers: ["gemini"] })).toEqual([400, expect.stringContaining("Claude, Codex")]);
+    expect(Object.keys(claudeTem())).toEqual(["demo"]); // nada foi instalado
+    expect((await api("tools/remove", "POST", { name: "nao-existe" })).status).toBe(404);
+    expect((await api("tools/login", "POST", { name: "nao-existe" })).status).toBe(404);
+  });
+
+  test("app do catálogo entra pelos dois CLIs, mostra o login que cada um informa, e sai ao remover", async () => {
+    const antes = await get("tools");
+    expect(antes.clis).toEqual({ claude: true, codex: true });
+    expect(antes.catalogo.find((a: any) => a.id === "linear")).toEqual({ id: "linear", nome: "Linear", o_que: expect.any(String), onde: "mcp.linear.app", falta: ["claude", "codex"] });
+    const r = await post("tools/install", { app: "linear" });
+    expect(r.results).toEqual({ claude: { ok: true }, codex: { ok: true } });
+    expect(claudeTem().linear).toEqual({ type: "http", url: "https://mcp.linear.app/mcp" });
+    expect(codexTem().linear).toEqual({ url: "https://mcp.linear.app/mcp" });
+    expect(r.apps.find((a: any) => a.name === "linear")).toEqual({ name: "linear", em: ["claude", "codex"], remoto: true, onde: "mcp.linear.app" });
+    expect(r.catalogo.find((a: any) => a.id === "linear").falta).toEqual([]);
+    expect(JSON.stringify(r)).not.toContain("segredo"); // a chave do servidor "demo" não vai para a tela
+    // recém-instalado: os dois CLIs dizem que falta entrar; o servidor local não tem login
+    expect(await estado("linear")).toEqual({ claude: { estado: "entrar" }, codex: { estado: "entrar" } });
+    expect(await estado("demo")).toEqual({ claude: { estado: "instalado" }, codex: { estado: "instalado" } });
+    // entrar roda o `mcp login` de cada CLI; enquanto ele espera o navegador, o estado é "entrando"
+    await post("tools/login", { name: "linear" });
+    expect((await estado("linear")).claude).toEqual({ estado: "entrando" });
+    await until(async () => { const e = await estado("linear"); return e.claude?.estado === "pronto" && e.codex?.estado === "pronto"; });
+    // instalar de novo: o nome já existe
+    const de_novo = await api("tools/install", "POST", { app: "linear" });
+    expect([de_novo.status, de_novo.body.code, de_novo.body.error]).toEqual([502, "cli_falhou", "O Claude já tem um app com esse nome. O Codex já tem um app com esse nome."]);
+    const fora = await post("tools/remove", { name: "linear" });
+    expect(fora.results).toEqual({ claude: { ok: true }, codex: { ok: true } });
+    expect([claudeTem().linear, codexTem().linear, fora.mcp.claude.includes("linear")]).toEqual([undefined, undefined, false]);
+    expect(await estado("linear")).toEqual({});
+  }, SLOW);
+
+  test("endereço colado e comando: vão como lista de argumentos, só no agente escolhido, e chegam às outras contas", async () => {
+    const r = await post("tools/install", { name: "interno", endereco: "https://mcp.exemplo.dev/v1?x=1;rm%20-rf", providers: ["codex"] });
+    expect(r.results).toEqual({ codex: { ok: true } });
+    expect([codexTem().interno.url, claudeTem().interno]).toEqual(["https://mcp.exemplo.dev/v1?x=1;rm%20-rf", undefined]);
+    const c = await post("tools/install", { name: "local_1", endereco: `npx -y "pacote com espaço" --raiz '$HOME; echo oi'`, providers: ["claude"] });
+    expect(c.results).toEqual({ claude: { ok: true } });
+    expect(claudeTem().local_1).toEqual({ type: "stdio", command: "npx", args: ["-y", "pacote com espaço", "--raiz", "$HOME; echo oi"] });
+    // com "Usar nas outras contas" ligado, o app novo vai junto na conversa da conta isolada
+    await post("tools", { on: true });
+    const reserva = (await get("state")).accounts.find((a: any) => a.label === "reserva").id;
+    expect(texts(await idle(await chat(reserva, "com o app novo")))).toContain('mcp_servers.interno={ url = "https://mcp.exemplo.dev/v1?x=1;rm%20-rf" }');
+    await post("tools", { on: false });
+    await post("tools/remove", { name: "interno" });
+    await post("tools/remove", { name: "local_1" });
+    expect([codexTem().interno, claudeTem().local_1]).toEqual([undefined, undefined]);
+  }, SLOW);
+
+  test("erro do CLI volta em frase; se um agente instala e o outro não, a resposta diz qual", async () => {
+    const r = await api("tools/install", "POST", { name: "falha-x", endereco: "https://mcp.exemplo.dev" });
+    expect([r.status, r.body.code]).toEqual([502, "cli_falhou"]);
+    expect(r.body.error).toBe("O Claude não conseguiu instalar falha-x: could not reach the server for falha-x O Codex não conseguiu instalar falha-x: could not reach the server for falha-x");
+    await post("tools/install", { name: "meio", endereco: "https://mcp.exemplo.dev", providers: ["claude"] });
+    const meio = await post("tools/install", { name: "meio", endereco: "https://mcp.exemplo.dev" });
+    expect(meio.results).toEqual({ claude: { ok: false, erro: "O Claude já tem um app com esse nome." }, codex: { ok: true } });
+    await post("tools/remove", { name: "meio" });
+  }, SLOW);
+
+  test("Codex que já abre o login ao instalar: a rota responde logo e o estado acompanha até a volta do navegador", async () => {
+    const t0 = Date.now();
+    const r = await post("tools/install", { name: "com-login", endereco: "https://espera.exemplo.dev/mcp", providers: ["codex"] });
+    expect(r.results).toEqual({ codex: { ok: true, login: true } });
+    expect(Date.now() - t0).toBeLessThan(10_000);
+    expect((await estado("com-login")).codex).toEqual({ estado: "entrando" });
+    writeFileSync(join(HOME, ".volta-do-login"), "");
+    await until(async () => (await estado("com-login")).codex?.estado === "pronto");
+    rmSync(join(HOME, ".volta-do-login"));
+    await post("tools/remove", { name: "com-login" });
+  }, SLOW);
+});
+
 describe("arrumação do cérebro", () => {
   test("acha nota vazia, cópia idêntica e parecida; arquivar tira da busca sem apagar", async () => {
     const body = "A zebra de teste usa listras verticais no painel de relatórios e exporta em CSV toda sexta de manhã para a equipe.";

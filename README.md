@@ -194,7 +194,8 @@ A Revoada é um servidor local em Bun com uma página, embrulhado numa janela na
 | `schedule.ts` | Pedidos agendados: o relógio e a regra de hora perdida. |
 | `route.ts` | Modelo automático: as regras que dão o porte de um pedido. |
 | `safe.ts` | Decide se um comando só lê, para rodar sem perguntar. |
-| `tools.ts` | Skills e servidores MCP da conta padrão nas outras contas. |
+| `tools.ts` | Skills e servidores MCP da conta padrão nas outras contas; instalar, remover e entrar em app pelo CLI oficial. |
+| `apps.ts` | Catálogo dos apps que a janela Apps conectados instala com um clique, com a página oficial de onde saiu cada endereço. |
 | `clones.ts` | Cópias de repositório: detecção, classificação e limpeza. |
 | `history.ts` | Leitura e busca no histórico do Claude Code e do Codex. |
 | `remote.ts` | Acompanhamento pelo celular: a segunda porta, o código de acesso e a API reduzida. |
@@ -224,6 +225,7 @@ A Revoada é um servidor local em Bun com uma página, embrulhado numa janela na
 
 - **Cérebro.** `Agentes/` e `Projetos/` no cofre são espelho (a origem manda, a sincronização sobrescreve). `Revoada/` são notas próprias, onde você ou qualquer agente pode escrever. A busca é local, por palavra (BM25); com um modelo de embeddings no Ollama passa a considerar também o significado.
 - **Skills e MCP.** A conta padrão de cada provedor é a fonte. Skill entra nas outras contas como atalho (symlink) para a pasta original; a Revoada só mexe nos atalhos que ela criou. Servidor MCP vai como argumento em cada execução (`--mcp-config` no Claude, `-c mcp_servers…` no Codex). Gemini e Grok recebem as skills, não os servidores MCP.
+- **Instalar app.** A janela Apps conectados instala servidor MCP na conta padrão chamando `claude mcp add --scope user` e `codex mcp add`, e remove com `mcp remove`; a Revoada não escreve nos arquivos de configuração. O catálogo (`apps.ts`) só tem servidor oficial que entra por login no navegador; qualquer outro vai por "Outro endereço" (URL https ou comando). O estado de login é o que o CLI informa (`claude mcp get`, `codex mcp list --json`), e Entrar roda o `mcp login` dele.
 
 ## Desenvolver
 

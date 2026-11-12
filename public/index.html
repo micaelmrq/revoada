@@ -204,7 +204,18 @@
   .selo.de-app svg { width: 58%; height: 58%; fill: currentColor; display: block; }
   .app-c .selo { width: 34px; height: 34px; border-radius: 9px; font-weight: 600; text-transform: uppercase; }
   .app-c b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .app-c span span { color: var(--tinta3); font-size: 13px; }
-  .app-c > span:nth-child(2) { min-width: 0; }
+  .app-c > span:nth-child(2) { min-width: 0; flex: 1; } .app-c .btn { flex: none; min-height: 28px; padding: 3px 11px; font-size: 13px; }
+  .apps-l { display: grid; }
+  .app-l { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 11px; padding: 9px 2px; border-bottom: 1px solid var(--fio); min-width: 0; }
+  .app-l .selo { width: 30px; height: 30px; border-radius: 8px; font-weight: 600; text-transform: uppercase; }
+  .app-n { flex: 1 1 140px; min-width: 0; } .app-n b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .app-n span { display: block; color: var(--tinta3); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-e { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--tinta2); font-size: 13px; } .app-e > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; } .app-e i { font-style: normal; }
+  .app-a { display: flex; align-items: center; gap: 4px; flex: none; } .app-a .btn { min-height: 28px; padding: 3px 11px; font-size: 13px; }
+  .app-nota { flex: 1 1 100%; color: var(--tinta2); font-size: 13px; padding-left: 41px; }
+  .app-outro { display: grid; gap: 8px; padding-top: 14px; } .app-outro small { color: var(--tinta3); font-size: 13px; line-height: 1.5; }
+  .app-outro .e-linha input { min-height: 34px; font-size: 14px; flex: 3 1 240px; } .app-outro .e-linha #appNome { flex: 1 1 130px; } .app-outro .e-linha .btn { min-height: 34px; }
+  .apps-em { display: flex; align-items: center; gap: 4px; color: var(--tinta3); font-size: 13px; } .apps-em > span { margin-right: 4px; }
+  .apps-em .chip { box-shadow: inset 0 0 0 1px var(--fio); } .apps-em .chip.on { box-shadow: inset 0 0 0 1px var(--fio2); } .apps-em .chip svg.i { width: 13px; height: 13px; }
   .pair { display: grid; grid-template-columns: 148px 1fr; gap: 18px; align-items: center; padding: 12px; }
   .pair .qr { background: #fff; border-radius: 10px; padding: 6px; line-height: 0; } .pair .qr svg { width: 100%; height: auto; }
   .pair p { margin: 6px 0 10px; color: var(--tinta2); font-size: 13px; }
@@ -1233,26 +1244,100 @@ const APP_MARCA = {
 };
 const APP_REGRA = [[/linear/i, "linear"], [/figma/i, "figma"], [/chrome|devtools/i, "chrome"], [/node/i, "node"], [/aws|amazon/i, "aws"], [/heroui|nextui/i, "heroui"], [/notion/i, "notion"], [/github/i, "github"], [/slack/i, "slack"], [/stripe/i, "stripe"], [/supabase/i, "supabase"], [/vercel/i, "vercel"], [/sentry/i, "sentry"], [/playwright/i, "playwright"]];
 const appSelo = (nome) => { const m = APP_REGRA.find(([r]) => r.test(nome)); return m ? `<span class="selo de-app" title="${esc(nome)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${APP_MARCA[m[1]]}"/></svg></span>` : `<span class="selo">${esc(nome[0])}</span>`; };
-let toolsInfo = null;
+let toolsInfo = null, appsEstado = {}, appsOcupado = "";
+const appsEm = new Set(["claude", "codex"]);
+const CLI_NOME = { claude: "Claude", codex: "Codex" };
+const noCli = (ps) => ps.map((p) => (p === "claude" ? "no Claude" : "no Codex")).join(" e ");
+const APP_ESTADO = { pronto: ["ok", "pronto"], entrar: ["amber", "precisa entrar"], entrando: ["mute", "entrando no navegador"], falhou: ["red", "não conectou"] };
 function paintApps(t) {
   toolsInfo = t;
   const mcp = [...new Set([...t.mcp.claude, ...t.mcp.codex])], skills = Object.values(t.skills).reduce((n, x) => n + x, 0);
   $("appsPile").innerHTML = mcp.slice(0, 4).map(appSelo).join("");
   $("appsText").textContent = mcp.length ? plural(mcp.length, "app conectado", "apps conectados") : skills ? plural(skills, "skill instalada", "skills instaladas") : "Apps conectados";
   if (!$("appsDlg").open) return;
-  const where = (m) => [t.mcp.claude.includes(m) && "Claude", t.mcp.codex.includes(m) && "Codex"].filter(Boolean).join(" e ");
+  // digitação em curso no "Outro endereço" sobrevive a cada repintura
+  const digitado = ["appNome", "appEndereco"].map((id) => [id, $(id)?.value || "", document.activeElement?.id === id]);
+  const detalhe = (m) => t.apps?.find((a) => a.name === m) || { name: m, em: [t.mcp.claude.includes(m) && "claude", t.mcp.codex.includes(m) && "codex"].filter(Boolean), onde: "" };
+  const linha = (m) => {
+    const a = detalhe(m), est = appsEstado[m] || {}, entrar = a.em.filter((p) => est[p]?.estado === "entrar"), nota = a.em.map((p) => est[p]?.nota).find(Boolean);
+    return `<div class="app-l" data-app="${esc(m)}">${appSelo(m)}<span class="app-n"><b>${esc(m)}</b><span>${esc(a.onde)}</span></span>
+      <span class="app-e">${a.em.map((p) => `<span>${CLI_NOME[p]}${APP_ESTADO[est[p]?.estado] ? ` <i class="tag ${APP_ESTADO[est[p].estado][0]}">${APP_ESTADO[est[p].estado][1]}</i>` : ""}</span>`).join("")}</span>
+      ${t.catalogo ? `<span class="app-a">${entrar.length ? `<button class="btn line" data-app-login="${esc(m)}" data-em="${entrar.join(",")}">Entrar</button>` : ""}<button class="ic-b" data-app-tira="${esc(m)}" aria-label="Remover ${esc(m)}" title="Remover">${ic("lixo")}</button></span>` : ""}
+      ${nota ? `<small class="app-nota">${esc(nota)} Também dá para entrar por dentro de uma sessão do agente, com o comando /mcp. <button class="link" data-app-sessao="${a.em[0]}">Abrir sessão</button></small>` : ""}</div>`;
+  };
+  const clis = ["claude", "codex"].filter((p) => t.clis?.[p]);
+  const faltam = (t.catalogo || []).filter((a) => a.falta.length);
+  const adicionar = !t.catalogo ? "" : `<span class="label" style="padding:18px 0 8px">Adicionar app</span>`
+    + (clis.length ? "" : `<div class="calm">Instale o Claude Code ou o Codex para adicionar apps por aqui.</div>`)
+    + (clis.length && faltam.length ? `<div class="apps-g">${faltam.map((a) => `<div class="app-c">${appSelo(a.id)}<span><b>${esc(a.nome)}</b><span>${esc(a.o_que)}</span></span><button class="btn line" data-app-poe="${esc(a.id)}" data-em="${a.falta.join(",")}" ${appsOcupado ? "disabled" : ""}>${appsOcupado === a.id ? "Instalando" : a.falta.length < clis.length ? `Instalar ${noCli(a.falta)}` : "Instalar"}</button></div>`).join("")}</div>` : "")
+    + (clis.length ? `<div class="app-outro"><span class="label">Outro endereço</span><div class="e-linha"><input type="text" id="appNome" placeholder="nome-do-app" aria-label="Nome do app" autocomplete="off" spellcheck="false"><input type="text" id="appEndereco" placeholder="Endereço https do servidor MCP, ou o comando que o inicia" aria-label="Endereço ou comando" autocomplete="off" spellcheck="false"><button class="btn line" data-app-outro ${appsOcupado ? "disabled" : ""}>${appsOcupado === "outro" ? "Instalando" : "Instalar"}</button></div>
+      ${clis.length > 1 ? `<div class="apps-em"><span>Instalar em</span>${clis.map((p) => `<button class="chip ${appsEm.has(p) ? "on" : ""}" data-app-em="${p}" aria-pressed="${appsEm.has(p)}">${appsEm.has(p) ? ic("certo") : ""}${CLI_NOME[p]}</button>`).join("")}</div>` : ""}
+      <small>O app entra na conta padrão, pelo comando oficial de cada agente. Servidor com login próprio abre o navegador para você entrar. Nas outras contas ele vai junto quando a chave abaixo está ligada, e cada conta pede o próprio login na primeira conversa.</small></div>` : "");
   $("appsBody").innerHTML = `<span class="label" style="padding-bottom:8px">Servidores MCP</span>`
-    + (mcp.length ? `<div class="apps-g">${mcp.map((m) => `<div class="app-c">${appSelo(m)}<span><b>${esc(m)}</b><span>${where(m)}</span></span></div>`).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
+    + (mcp.length ? `<div class="apps-l">${mcp.map(linha).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
+    + adicionar
     + `<span class="label" style="padding:18px 0 8px">Skills</span><div class="calm">${Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${esc(prov(p)?.name || p)}: ${n}`).join(" · ") || "Nenhuma skill instalada na conta padrão."}</div>`
     + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button></div>`
     + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div>`;
+  for (const [id, valor, foco] of digitado) if ($(id)) { $(id).value = valor; if (foco) $(id).focus(); }
 }
-$("appsPill").onclick = async () => { $("appsDlg").showModal(); paintApps(await api("tools").catch(() => toolsInfo) || { on: false, skills: {}, mcp: { claude: [], codex: [] }, accounts: [] }); };
+// o estado de login vem do próprio CLI (demora uns segundos); enquanto algum login anda no navegador, confere de novo
+async function appsConfere() {
+  clearTimeout(appsConfere.t);
+  if (!$("appsDlg").open || !toolsInfo?.catalogo) return;
+  const e = await fetch("/api/tools/status").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!e || !$("appsDlg").open) return;
+  const antes = JSON.stringify(appsEstado);
+  appsEstado = e;
+  if (antes !== JSON.stringify(e)) paintApps(toolsInfo);
+  if (Object.values(e).some((ps) => Object.values(ps).some((x) => x.estado === "entrando"))) appsConfere.t = setTimeout(appsConfere, 2000);
+}
+async function appsInstala(body, marca, nome) {
+  if (appsOcupado) return;
+  appsOcupado = marca; paintApps(toolsInfo);
+  const r = await api("tools/install", "POST", body).catch(() => null);
+  appsOcupado = "";
+  if (!r) return paintApps(toolsInfo);
+  const ok = Object.keys(r.results).filter((p) => r.results[p].ok), ruim = Object.values(r.results).filter((x) => !x.ok).map((x) => x.erro);
+  toast([`${nome || r.name} instalado ${noCli(ok)}.`, ok.some((p) => r.results[p].login) ? "O navegador abriu para o login." : "", ...ruim].filter(Boolean).join(" "));
+  if (marca === "outro") for (const id of ["appNome", "appEndereco"]) $(id).value = "";
+  paintApps(r); if (view.type === "accounts") renderTools(r);
+  appsConfere();
+}
+$("appsPill").onclick = async () => { $("appsDlg").showModal(); paintApps(await api("tools").catch(() => toolsInfo) || { on: false, skills: {}, mcp: { claude: [], codex: [] }, accounts: [] }); appsConfere(); };
 $("appsClose").onclick = () => $("appsDlg").close();
+$("appsBody").onkeydown = (e) => { if (e.key === "Enter" && e.target.matches("#appNome, #appEndereco")) { e.preventDefault(); $("appsBody").querySelector("[data-app-outro]").click(); } };
 $("appsBody").onclick = async (e) => {
   const b = e.target.closest("button"); if (!b) return;
-  if ("appsAcc" in b.dataset) { $("appsDlg").close(); return go({ type: "accounts", tools: true }); }
-  if (b.dataset.tools) { b.disabled = true; const t = await api("tools", "POST", { on: b.dataset.tools === "1" }).catch(() => null); await refresh(); if (t) { paintApps(t); renderTools(t); } }
+  const d = b.dataset;
+  if ("appsAcc" in d) { $("appsDlg").close(); return go({ type: "accounts", tools: true }); }
+  if (d.tools) { b.disabled = true; const t = await api("tools", "POST", { on: d.tools === "1" }).catch(() => null); await refresh(); if (t) { paintApps(t); renderTools(t); } return; }
+  if (d.appEm) { appsEm.has(d.appEm) ? appsEm.delete(d.appEm) : appsEm.add(d.appEm); return paintApps(toolsInfo); }
+  if (d.appPoe) return appsInstala({ app: d.appPoe, providers: d.em.split(",") }, d.appPoe, toolsInfo.catalogo.find((a) => a.id === d.appPoe)?.nome);
+  if ("appOutro" in d) {
+    const providers = ["claude", "codex"].filter((p) => toolsInfo.clis[p] && (appsEm.has(p) || !toolsInfo.clis[p === "claude" ? "codex" : "claude"]));
+    if (!providers.length) return toast("Escolha em qual agente o app entra: Claude, Codex ou os dois.");
+    return appsInstala({ name: $("appNome").value.trim(), endereco: $("appEndereco").value.trim(), providers }, "outro");
+  }
+  if (d.appLogin) {
+    b.disabled = true;
+    const r = await api("tools/login", "POST", { name: d.appLogin, providers: d.em.split(",") }).catch(() => null);
+    if (r) toast(`O navegador abriu para o login em ${d.appLogin}. Termine por lá e volte.`);
+    return appsConfere();
+  }
+  if (d.appTira) {
+    const a = toolsInfo.apps.find((x) => x.name === d.appTira);
+    if (!confirm(`Remover ${d.appTira} ${noCli(a.em)}? O login guardado desse app também sai. Dá para instalar de novo depois.`)) return;
+    b.disabled = true;
+    const r = await api("tools/remove", "POST", { name: d.appTira }).catch(() => null);
+    if (!r) return paintApps(toolsInfo);
+    const ruim = Object.values(r.results).filter((x) => !x.ok).map((x) => x.erro);
+    toast([`${d.appTira} removido.`, ...ruim].join(" "));
+    delete appsEstado[d.appTira];
+    paintApps(r); if (view.type === "accounts") renderTools(r);
+    return;
+  }
+  if (d.appSessao) { const conta = S.accounts.find((x) => x.provider === d.appSessao && !x.isolated); if (!conta) return; $("appsDlg").close(); return openSession(conta.id, "chat"); }
 };
 
 // ---------- precisa de você ----------

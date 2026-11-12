@@ -12,7 +12,7 @@ import { createRemote } from "./remote";
 import { createSchedules } from "./schedule";
 import { createBoard } from "./board";
 import { routable } from "./route";
-import { createTools } from "./tools";
+import { createTools, pedido } from "./tools";
 import { readOnlyTool } from "./safe";
 import { createHmac, timingSafeEqual } from "crypto";
 import { GUIDE } from "./agent-guide";
@@ -275,7 +275,12 @@ saveAccounts();
 const account = (id: string) => accounts.find((a) => a.id === id);
 
 // ---------- skills e MCP em todas as contas ----------
-const tools = createTools({ home: HOME, root: ROOT });
+// instalar e remover apps é sempre na conta padrão do provedor, pelo CLI dele
+const tools = createTools({ home: HOME, root: ROOT, spawn(provider, args) {
+  const bin = binPath(provider), acc = accounts.find((a) => a.provider === provider && !a.home);
+  return bin && acc ? Bun.spawn([bin, ...args], { cwd: HOME, env: envFor(acc), stdin: "ignore", stdout: "pipe", stderr: "pipe" }) : null;
+} });
+const toolsInfo = () => ({ on: settings.shareTools, ...tools.summary(accounts), ...tools.apps({ claude: !!binPath("claude"), codex: !!binPath("codex") }) });
 const extraArgs = (acc: { id: string; provider: string; home: string | null }) => (settings.shareTools ? tools.mcpArgs(acc) : []);
 
 // ---------- a Revoada como ferramenta dos agentes ----------
@@ -1263,13 +1268,40 @@ const server = Bun.serve({
     }
 
     if (resource === "tools") {
+      if (id === "status" && req.method === "GET") return json(await tools.status());
+      if (req.method === "POST" && id) {
+        const clis = ["claude", "codex"].filter((p) => binPath(p));
+        // deu certo em ao menos um agente: 200 com o resultado de cada um; em nenhum: o erro do CLI, em frase
+        const feito = (name: string, results: Record<string, { ok: boolean; erro?: string }>) => Object.values(results).some((r) => r.ok)
+          ? json({ name, results, ...toolsInfo() }) : fail(Object.values(results).map((r) => r.erro).join(" "), 502, "cli_falhou");
+        const quais = (Array.isArray(body.providers) ? body.providers : clis).filter((p: unknown) => p === "claude" || p === "codex") as string[];
+        if (!quais.length) return fail("Escolha em qual agente o app entra: Claude, Codex ou os dois.");
+        if (id === "install") {
+          const p = pedido(body);
+          if (typeof p === "string") return fail(p);
+          const results = await tools.install(p, quais);
+          return feito(p.name, results);
+        }
+        const name = String(body.name || "");
+        const tem = quais.filter((p) => tools.mcpNames(p).includes(name));
+        if (!tem.length) return fail(`O app ${name.slice(0, 40)} não existe na conta padrão.`, 404);
+        if (id === "remove") {
+          const results = await tools.remove(name, tem);
+          return feito(name, results);
+        }
+        if (id === "login") {
+          const erros = tem.map((p) => tools.login(p, name)).filter(Boolean);
+          return erros.length === tem.length ? fail(erros[0]!, 502, "login_nao_iniciou") : json({ name, ok: true });
+        }
+        return fail("Essa ação não existe.", 404);
+      }
       if (req.method === "POST") {
         let did = null;
         if (typeof body.on === "boolean") { settings.shareTools = body.on; did = shareTools(body.on); writeFileSync(SETTINGS_FILE, JSON.stringify(settings)); }
         else if (body.sync && settings.shareTools) did = shareTools(true);
-        return json({ on: settings.shareTools, did, ...tools.summary(accounts) });
+        return json({ did, ...toolsInfo() });
       }
-      return json({ on: settings.shareTools, ...tools.summary(accounts) });
+      return json(toolsInfo());
     }
 
     // o código de acesso só sai por aqui, pra página local montar o QR
@@ -1451,6 +1483,7 @@ function shutdown() {
   schedules.stop();
   missions.stop();
   board.stop();
+  tools.stop();
   for (const s of sessions.values()) if (s.alive) { s.alive = false; archive(s); s.proc.kill(); }
   process.exit(0);
 }

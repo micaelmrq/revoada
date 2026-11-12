@@ -4,6 +4,7 @@
 import { writeFileSync } from "fs";
 import { basename } from "path";
 const a = process.argv.slice(2), all = a.join("\n"), out = (o: unknown) => console.log(JSON.stringify(o));
+if (a[0] === "mcp") await (await import("../../scripts/mcp-de-mentira")).mcpDeMentira("codex", a);
 if (a[0] === "login") { console.log("Logged in using ChatGPT"); process.exit(0); }
 const home = process.env.CODEX_HOME;
 if (!home) {

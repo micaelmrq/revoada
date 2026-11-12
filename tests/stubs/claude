@@ -3,6 +3,7 @@
 // o pedido de permissão, o texto aos pedaços e o aviso de consumo.
 import { writeFileSync } from "fs";
 const a = process.argv.slice(2), out = (o: unknown) => console.log(JSON.stringify(o));
+if (a[0] === "mcp") await (await import("../../scripts/mcp-de-mentira")).mcpDeMentira("claude", a);
 if (a[0] === "auth") { out({ loggedIn: true, email: "teste@exemplo.dev", subscriptionType: "max", orgName: "teste@exemplo.dev" }); process.exit(0); }
 // pedido avulso (título): `-p <texto> --model haiku`. A conversa também pode trazer --model, mas aí o -p vem sem texto.
 if (a[0] === "-p" && a[1] && !a[1].startsWith("--") && a.includes("--model")) { console.log(a[1].includes("próxima mensagem") ? "roda os testes agora" : "Título de teste"); process.exit(0); }

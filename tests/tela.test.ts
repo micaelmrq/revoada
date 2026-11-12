@@ -753,6 +753,39 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`closePops(); go({ type: "home" });`);
   }, SLOW);
 
+  test("apps conectados: instalar do catálogo, entrar, instalar um endereço colado e remover, tudo pela janela", async () => {
+    await page(`go({ type: "home" }); window.confirm = () => true; document.querySelector("#appsPill").click();`);
+    await until(`document.querySelector("#appsDlg").open && document.querySelector('#appsBody [data-app-poe="linear"]')`);
+    const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Adicionar app") && b.innerText.includes("Outro endereço"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
+    expect(inicio).toEqual({ secao: true, catalogo: ["linear", "notion", "figma", "sentry", "stripe", "vercel", "supabase"], marca: true, agentes: ["Claude:true", "Codex:true"], larga: false });
+    // instalar: o app sai do catálogo, entra na lista e os dois CLIs informam que falta entrar
+    await page(`document.querySelector('#appsBody [data-app-poe="linear"]').click();`);
+    await until(`document.querySelector('#appsBody [data-app="linear"] [data-app-login]') && !document.querySelector('#appsBody [data-app-poe="linear"]')`);
+    expect(await page(`const l = document.querySelector('#appsBody [data-app="linear"]'); return [l.querySelector(".app-n").innerText.replace(/\\s+/g, " "), l.querySelector(".app-e").innerText.replace(/\\s+/g, " "), document.querySelector("#toast").textContent, document.querySelector("#appsText").textContent];`))
+      .toEqual(["linear mcp.linear.app", "Claude precisa entrar Codex precisa entrar", "Linear instalado no Claude e no Codex.", "1 app conectado"]);
+    // entrar: o CLI abre o navegador; quando o login volta, o estado vira pronto e o botão some
+    await page(`document.querySelector('#appsBody [data-app="linear"] [data-app-login]').click();`);
+    await until(`document.querySelector('#appsBody [data-app="linear"] .app-e').innerText.replace(/\\s+/g, " ") === "Claude pronto Codex pronto" && !document.querySelector('#appsBody [data-app="linear"] [data-app-login]')`);
+    // outro endereço, só no Codex: nome errado volta com a frase do servidor e o que foi digitado fica no campo
+    await page(`document.querySelector('#appsBody [data-app-em="claude"]').click(); document.querySelector("#appNome").value = "Meu App"; document.querySelector("#appEndereco").value = "https://mcp.exemplo.dev/mcp"; document.querySelector("#appsBody [data-app-outro]").click();`);
+    await until(`document.querySelector("#toast").textContent.includes("letras minúsculas") && !document.querySelector("#appsBody [data-app-outro]").disabled`);
+    expect(await page(`return [document.querySelector("#appNome").value, document.querySelector("#appEndereco").value]`)).toEqual(["Meu App", "https://mcp.exemplo.dev/mcp"]);
+    await page(`document.querySelector("#appNome").value = "meu-app"; document.querySelector("#appsBody [data-app-outro]").click();`);
+    await until(`document.querySelector('#appsBody [data-app="meu-app"]')`);
+    expect(await page(`return [document.querySelector('#appsBody [data-app="meu-app"] .app-e').innerText.split(/\\s/)[0], document.querySelector("#appNome").value, document.querySelector("#toast").textContent]`)).toEqual(["Codex", "", "meu-app instalado no Codex."]);
+    // falha do CLI aparece em frase e nada entra na lista
+    await page(`document.querySelector("#appNome").value = "falha-1"; document.querySelector("#appEndereco").value = "https://mcp.exemplo.dev/mcp"; document.querySelector("#appsBody [data-app-outro]").click();`);
+    await until(`document.querySelector("#toast").textContent.includes("O Codex não conseguiu instalar falha-1")`);
+    expect(await page(`return !!document.querySelector('#appsBody [data-app="falha-1"]')`)).toBe(false);
+    // remover pede confirmação e devolve o app ao catálogo
+    for (const nome of ["linear", "meu-app"]) {
+      await page(`document.querySelector('#appsBody [data-app-tira="${nome}"]').click();`);
+      await until(`!document.querySelector('#appsBody [data-app="${nome}"]')`);
+    }
+    expect(await page(`return [!!document.querySelector('#appsBody [data-app-poe="linear"]'), document.querySelector("#appsBody").innerText.includes("Nenhum servidor MCP"), document.querySelector("#appsText").textContent]`)).toEqual([true, true, "Apps conectados"]);
+    await page(`document.querySelector('#appsBody [data-app-em="claude"]').click(); document.querySelector("#appsClose").click();`);
+  }, SLOW);
+
   test("apps conectados mostram a marca do app conhecido e a inicial do resto, e Todos os agentes chama um rodízio por provedor", async () => {
     expect(await page(`return ["linear", "linear-pulse", "chrome-devtools", "figma", "aws-mcp", "node_repl", "heroui-pro", "pluma", "arara"].map((n) => appSelo(n).includes("<svg") ? "marca" : appSelo(n).replace(/<[^>]+>/g, ""))`))
       .toEqual(["marca", "marca", "marca", "marca", "marca", "marca", "marca", "p", "a"]);
