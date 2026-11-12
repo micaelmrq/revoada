@@ -723,6 +723,36 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`go({ type: "home" });`);
   }, SLOW);
 
+  test("pasta de trabalho: lista com busca, Enter escolhe, e Procurar no computador navega pelas pastas de verdade", async () => {
+    await page(`setCwd(S.home); go({ type: "home" }); await api("dirs").then((d) => (DIRS = d)); document.querySelector("#dirChip").click();`);
+    const aberta = await page(`return { foco: document.activeElement.id, linhas: document.querySelectorAll("#dirLista [data-dir]").length > 1, marcada: document.querySelector("#dirLista .opt.on")?.dataset.dir === S.home,
+      copias: [...document.querySelectorAll("#dirLista [data-dir]")].filter((b) => b.dataset.dir.includes("/.revoada/worktrees/")).length, texto: !!document.querySelector('#popDir input[type="text"]:not(#dirBusca)') };`);
+    expect(aberta).toEqual({ foco: "dirBusca", linhas: true, marcada: true, copias: 0, texto: false });
+    // a busca filtra e o Enter leva a primeira
+    const alvo = await page(`return DIRS.find((d) => d !== S.home && d !== S.projects)`);
+    await page(`const q = document.querySelector("#dirBusca"); q.value = ${JSON.stringify(alvo.split("/").pop())}; q.oninput(); window.__primeira = document.querySelector("#dirLista [data-dir]").dataset.dir; q.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));`);
+    expect(await page(`return [cwd() === window.__primeira, cwd().includes(${JSON.stringify(alvo.split("/").pop())}), document.querySelector("#popDir").classList.contains("on")]`)).toEqual([true, true, false]);
+    // "Procurar no computador" navega pelas pastas de verdade: usar esta, subir, entrar numa subpasta
+    await page(`setCwd(S.projects); document.querySelector("#dirChip").click(); document.querySelector("#dirOutra").click();`);
+    await until(`document.querySelector("#dirLista [data-entra]")`);
+    const dentro = await page(`const l = [...document.querySelectorAll("#dirLista .opt")]; return { aberta: document.querySelector("#popDir").classList.contains("on"), busca: document.querySelector("#dirBusca").value === short(S.projects) + "/",
+      usar: [l[0].querySelector("b").textContent, l[0].dataset.dir === S.projects], sobe: l[1].dataset.entra === S.home, subs: l.slice(2).every((b) => b.dataset.entra.startsWith(S.projects + "/")) && l.length > 2 };`);
+    expect(dentro).toEqual({ aberta: true, busca: true, usar: ["Usar esta pasta", true], sobe: true, subs: true });
+    await page(`window.__sub = document.querySelectorAll("#dirLista [data-entra]")[1].dataset.entra; document.querySelectorAll("#dirLista [data-entra]")[1].click();`);
+    await until(`document.querySelector("#dirLista [data-dir]")?.dataset.dir === window.__sub`);
+    await page(`document.querySelector("#dirBusca").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));`);
+    expect(await page(`return [cwd() === window.__sub, document.querySelector("#popDir").classList.contains("on")]`)).toEqual([true, false]);
+    // caminho colado com ~ vale, e nome pela metade filtra a pasta de cima
+    await page(`document.querySelector("#dirChip").click(); const q = document.querySelector("#dirBusca"); q.value = short(S.projects).slice(0, -1); q.oninput();`);
+    await until(`document.querySelector("#dirLista [data-entra='" + S.projects + "']")`);
+    // pasta que não existe avisa, e a busca de projeto sem resultado aponta para a navegação
+    await page(`const q = document.querySelector("#dirBusca"); q.value = "/pasta-que-nao-existe-zzz/"; q.oninput();`);
+    await until(`document.querySelector("#dirLista .vazio")?.textContent.includes("não existe neste computador")`);
+    await page(`const q = document.querySelector("#dirBusca"); q.value = "pasta-que-nao-existe-zzz"; q.oninput();`);
+    expect(await page(`return document.querySelector("#dirLista .vazio")?.textContent.includes("Procurar no computador")`)).toBe(true);
+    await page(`closePops(); go({ type: "home" });`);
+  }, SLOW);
+
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {
     await page(`go({ type: "home" });`);
     const campo = await page(`const c = document.querySelector("#v-home canvas.campo"), v = document.querySelector("#v-home");

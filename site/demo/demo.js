@@ -538,6 +538,7 @@ window.REVOADA_DEMO = {"cenas":[{"quando":["pagina[\\u00E7c][\\u00E3a]o de \\/pe
     const [recurso, x, acao, extra] = caminho.split("/").map(decodeURIComponent), POST = metodo === "POST", GET = metodo === "GET", DEL = metodo === "DELETE";
     if (recurso === "state") return estado();
     if (recurso === "dirs") return DIRS;
+    if (recurso === "ls") { const dir = (q.get("dir") || HOME).replace(/(.)\/+$/, "$1"), filhos = [...new Set(DIRS.filter((d) => d.startsWith(dir + "/")).map((d) => d.slice(dir.length + 1).split("/")[0]))]; return { dir, exists: dir === "" || DIRS.includes(dir), parent: dir.split("/").slice(0, -1).join("/") || "/", subs: filhos }; }
     if (recurso === "chat" && POST) {
       const prompt = String(b.prompt || "").trim(), alvos = Array.isArray(b.targets) ? b.targets.filter(ehAlvo) : [], cwd = pasta(b.cwd);
       if (!alvos.length) nao("escolha ao menos uma conta");

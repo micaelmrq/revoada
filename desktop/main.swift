@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     // erros da página caem no mesmo registro do servidor
     config.userContentController.addUserScript(WKUserScript(source: "addEventListener('error', e => webkit.messageHandlers.log.postMessage('erro na página: ' + e.message + ' (' + (e.filename || '').split('/').pop() + ':' + e.lineno + ')'))", injectionTime: .atDocumentStart, forMainFrameOnly: true))
     config.userContentController.add(self, name: "log")
+    config.userContentController.add(self, name: "pasta")
     config.preferences.setValue(true, forKey: "developerExtrasEnabled")
     web = WKWebView(frame: .zero, configuration: config)
     web.uiDelegate = self
@@ -219,7 +220,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     h.write("[janela] \(line)\n".data(using: .utf8)!)
     try? h.close()
   }
-  func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) { log("\(message.body)") }
+  func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+    if message.name == "pasta" { return escolhePasta(aPartirDe: message.body as? String) }
+    log("\(message.body)")
+  }
+
+  // "Escolher outra pasta" na caixa de pedido: a janela de pasta do sistema, e o caminho volta para a página
+  func escolhePasta(aPartirDe atual: String?) {
+    let painel = NSOpenPanel()
+    painel.canChooseDirectories = true
+    painel.canChooseFiles = false
+    painel.allowsMultipleSelection = false
+    painel.canCreateDirectories = true
+    painel.prompt = "Usar esta pasta"
+    painel.message = "Pasta em que o agente vai trabalhar"
+    if let atual, !atual.isEmpty { painel.directoryURL = URL(fileURLWithPath: atual) }
+    painel.beginSheetModal(for: window) { [weak self] resposta in
+      guard resposta == .OK, let caminho = painel.url?.path, let dado = try? JSONSerialization.data(withJSONObject: [caminho]), let json = String(data: dado, encoding: .utf8) else { return }
+      self?.web.evaluateJavaScript("setCwd(\(json)[0]); document.getElementById('prompt').focus()")
+    }
+  }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     guard loaded else { return }

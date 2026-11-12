@@ -868,6 +868,19 @@ function listDirs() {
   return out.slice(0, 400);
 }
 
+// as subpastas de uma pasta do computador, para a escolha de pasta navegar fora dos projetos
+const LS_MAX = 300;
+function listSubdirs(dir: unknown) {
+  const p = typeof dir === "string" && dir.trim() ? dir.trim().replace(/^~(?=\/|$)/, HOME) : HOME;
+  try {
+    if (!statSync(p).isDirectory()) return { dir: p, exists: false, parent: dirname(p), subs: [] };
+    const subs = readdirSync(p, { withFileTypes: true })
+      .filter((d) => !d.name.startsWith(".") && d.name !== "node_modules" && (d.isDirectory() || (d.isSymbolicLink() && validCwd(join(p, d.name)))))
+      .map((d) => d.name).sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })).slice(0, LS_MAX);
+    return { dir: p, exists: true, parent: dirname(p), subs };
+  } catch { return { dir: p, exists: false, parent: dirname(p), subs: [] }; }
+}
+
 function validCwd(cwd: unknown) {
   const p = typeof cwd === "string" && cwd.trim() ? cwd.trim().replace(/^~(?=\/|$)/, HOME) : HOME;
   try { if (statSync(p).isDirectory()) return p; } catch {}
@@ -1065,6 +1078,7 @@ const server = Bun.serve({
     if (resource === "state") return json(await state(url.searchParams.has("refresh")));
     if (resource === "guide") return json({ guide: GUIDE, limite: AGENT_BUDGET });
     if (resource === "dirs") return json(listDirs());
+    if (resource === "ls") return json(listSubdirs(url.searchParams.get("dir")));
 
     // entrada única do campo de pedido: uma conta abre sessão, várias respondem em paralelo
     if (resource === "chat" && req.method === "POST") {

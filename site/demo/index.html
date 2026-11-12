@@ -302,7 +302,19 @@
   .opt .ck { width: 16px; height: 16px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--tinta3); display: grid; place-items: center; flex: none; }
   .opt.on .ck { background: var(--botao); box-shadow: none; color: var(--sobre-botao); }
   .opt small { color: var(--tinta3); margin-left: auto; padding-left: 14px; white-space: nowrap; }
-  #popDir { left: 0; bottom: calc(100% + 6px); padding: 12px; width: min(380px, 100%); min-width: 0; }
+  #popDir { left: 0; bottom: calc(100% + 6px); padding: 0; width: min(400px, 100%); min-width: 0; max-height: none; overflow: hidden; }
+  #popDir #dirBusca { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--fio); border-radius: 0; background: none; outline: none; padding: 12px 16px; font-size: 14px; box-shadow: none; }
+  #popDir #dirBusca::placeholder { color: var(--tinta3); }
+  #dirLista { max-height: 296px; overflow-y: auto; padding: 6px; }
+  #dirLista .opt { width: 100%; }
+  #dirLista .opt.ativa { background: var(--sup); }
+  #dirLista .opt b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: none; max-width: 60%; }
+  #dirLista .opt .val { margin-left: 0; padding-left: 8px; flex: 1; text-align: left; white-space: nowrap; }
+  #dirLista .opt .visto { margin-left: 8px; }
+  #dirLista .opt .volta { display: flex; transform: scaleX(-1); color: var(--tinta3); } #dirLista .opt .ir { margin-left: auto; }
+  #dirLista .vazio { padding: 10px; color: var(--tinta3); font-size: 13px; }
+  #dirPe { border-top: 1px solid var(--fio); padding: 6px; }
+  #dirPe .opt { width: 100%; } #dirPe small { display: block; padding: 6px 10px; color: var(--tinta3); font-size: 12.5px; }
   #popTarget { right: 0; bottom: 54px; max-width: 100%; }
   #popSched { left: 0; bottom: 54px; width: min(340px, 100%); min-width: 0; padding: 14px; }
   #popSched.on { display: grid; gap: 12px; } #popSched small { color: var(--tinta2); font-size: 12.5px; line-height: 1.45; }
@@ -699,8 +711,11 @@
     <div class="chatscroll" id="chatScroll"><div class="msgs" id="msgs"></div><div class="msgs" id="queued"></div></div>
   </section>
     <div class="composer" id="composer">
-      <div class="pop" id="popDir"><span class="label" style="padding:0 0 8px">Pasta de trabalho</span>
-        <input type="text" id="cwd" list="dirs" spellcheck="false" autocomplete="off" aria-label="Pasta de trabalho"><datalist id="dirs"></datalist></div>
+      <div class="pop" id="popDir">
+        <input type="text" id="dirBusca" placeholder="Pesquisar pastas" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="dirLista" aria-label="Pesquisar pastas ou colar um caminho">
+        <div id="dirLista" role="listbox" aria-label="Pasta de trabalho"></div>
+        <div id="dirPe"></div>
+        <input type="hidden" id="cwd"></div>
       <div class="pop" id="popTarget"></div>
       <div class="pop" id="popSched"><span class="label" style="padding:0">Agendar este pedido</span>
         <div class="seg" id="schedKind" style="justify-self:start"><button data-k="once" class="on">Uma vez</button><button data-k="daily">Todo dia</button></div>
@@ -1276,10 +1291,69 @@ $("needList").onclick = async (e) => {
 
 // ---------- campo de pedido ----------
 function setCwd(dir) { $("cwd").value = dir; store.set("cwd", dir); paintComposer(); renderThreads(); peek(); }
-$("cwd").onchange = () => setCwd(cwd());
-$("cwd").onkeydown = (e) => { if (e.key === "Enter") { setCwd(cwd()); closePops(); $("prompt").focus(); } };
+// escolher a pasta: busca em cima, recentes e as pastas de projetos embaixo. "Procurar no computador" abre a janela do
+// sistema no app de Mac; no navegador, e sempre que a busca vira um caminho (~/ ou /), a lista navega pelas pastas do computador.
+let DIRS = [], dirAtiva = 0;
+const LS = new Map(); // subpastas já lidas, por pasta
+const temJanelaDePasta = () => !!window.webkit?.messageHandlers?.pasta;
+const pastasRecentes = () => [...new Set([...S.convos].sort((a, b) => (b.at || b.startedAt || 0) - (a.at || a.startedAt || 0)).map((c) => c.cwd).filter((d) => d && !d.includes("/.revoada/worktrees/")))].slice(0, 5); // cópia isolada de conversa não é projeto
+const pai = (d) => d.replace(/\/[^/]*$/, "") || "/";
+const junta = (d, nome) => (d === "/" ? "" : d) + "/" + nome;
+function leSubpastas(dir) {
+  if (LS.has(dir)) return LS.get(dir);
+  LS.set(dir, null);
+  api("ls?dir=" + encodeURIComponent(dir)).then((r) => { LS.set(dir, r); if ($("popDir").classList.contains("on")) paintDirs(); }).catch(() => LS.delete(dir));
+  return null;
+}
+function navegaPara(dir) { $("dirBusca").value = (short(dir) === "/" ? "" : short(dir)) + "/"; dirAtiva = 0; paintDirs(); $("dirBusca").focus(); }
+function paintDirs() {
+  const q = $("dirBusca").value.trim(), baixo = q.toLowerCase(), atual = cwd();
+  const linha = (d, rotulo, navega) => `<button class="opt ${!navega && d === atual ? "on" : ""}" role="option" aria-selected="${!navega && d === atual}" ${navega ? "data-entra" : "data-dir"}="${esc(d)}">${navega === "sobe" ? `<span class="volta">${ic("seta")}</span>` : ic("pasta")}<b>${esc(rotulo || base(d))}</b><span class="val">${navega === "entra" ? "" : esc(short(d))}</span>${navega === "entra" ? `<span class="ir">${ic("seta")}</span>` : navega ? "" : `<span class="visto">${ic("certo")}</span>`}</button>`;
+  let html = "";
+  if (/^[~/]/.test(q)) {
+    // caminho: mostra a pasta digitada por dentro; enquanto o nome está pela metade, a pasta de cima filtrada por ele
+    const caminho = q.replace(/^~(?=\/|$)/, S.home).replace(/(.)\/+$/, "$1"), inteira = q.endsWith("/") || leSubpastas(caminho)?.exists;
+    const dir = inteira ? caminho : pai(caminho), prefixo = inteira ? "" : base(caminho).toLowerCase(), l = leSubpastas(dir);
+    if (!l) html = `<div class="vazio">Lendo a pasta…</div>`;
+    else if (!l.exists) html = `<div class="vazio">Essa pasta não existe neste computador.</div>` + (dir !== "/" ? linha(pai(dir), "Subir para " + (base(pai(dir)) || "/"), "sobe") : "");
+    else {
+      const subs = l.subs.filter((n) => n.toLowerCase().startsWith(prefixo));
+      html = linha(dir, "Usar esta pasta") + (dir !== "/" ? linha(l.parent, "Subir para " + base(l.parent), "sobe") : "")
+        + (subs.length ? `<span class="label">Dentro de ${esc(short(dir))}</span>${subs.map((n) => linha(junta(dir, n), n, "entra")).join("")}` : `<div class="vazio">${prefixo ? "Nenhuma pasta começa com esse nome aqui." : "Sem pastas aqui dentro."}</div>`);
+    }
+  } else {
+    const bate = (d) => !baixo || short(d).toLowerCase().includes(baixo);
+    const recentes = q ? [] : pastasRecentes(), resto = DIRS.filter((d) => bate(d) && !recentes.includes(d)).slice(0, 60);
+    html = (recentes.length ? `<span class="label">Recentes</span>${recentes.map((d) => linha(d)).join("")}` : "")
+      + (resto.length ? `<span class="label">${q ? "Pastas" : "Em " + esc(short(S.projects))}</span>${resto.map((d) => linha(d)).join("")}` : "")
+      || `<div class="vazio">Nenhuma pasta de projeto com esse nome. Use "Procurar no computador" para achar em outro lugar.</div>`;
+  }
+  $("dirLista").innerHTML = html;
+  $("dirPe").innerHTML = `<button class="opt" id="dirOutra">${ic("busca")}Procurar no computador</button>`;
+  const linhas = [...$("dirLista").querySelectorAll("[data-dir], [data-entra]")];
+  dirAtiva = Math.max(0, Math.min(dirAtiva, linhas.length - 1));
+  linhas.forEach((b, i) => b.classList.toggle("ativa", i === dirAtiva));
+  linhas[dirAtiva]?.scrollIntoView({ block: "nearest" });
+}
+function escolheDir(dir) { setCwd(dir); closePops(); $("prompt").focus(); }
+const ativaDir = (b) => (b.dataset.entra !== undefined ? navegaPara(b.dataset.entra) : escolheDir(b.dataset.dir));
+$("dirBusca").oninput = () => { dirAtiva = 0; paintDirs(); };
+$("dirBusca").onkeydown = (e) => {
+  const linhas = $("dirLista").querySelectorAll("[data-dir], [data-entra]");
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); dirAtiva = (dirAtiva + (e.key === "ArrowDown" ? 1 : -1) + linhas.length) % Math.max(1, linhas.length); paintDirs(); }
+  if (e.key === "Enter") { e.preventDefault(); const b = linhas[dirAtiva]; if (b) ativaDir(b); }
+  if (e.key === "Escape") { closePops(); $("prompt").focus(); }
+};
+$("popDir").onclick = (e) => {
+  // a lista é refeita a cada passo: sem segurar o clique aqui, o botão clicado some da página e o "clique fora" fecharia a janelinha
+  e.stopPropagation();
+  const b = e.target.closest("[data-dir], [data-entra]"); if (b) return ativaDir(b);
+  if (!e.target.closest("#dirOutra")) return;
+  if (temJanelaDePasta()) { closePops(); return window.webkit.messageHandlers.pasta.postMessage(cwd()); }
+  navegaPara(cwd() || S.home);
+};
 function closePops() { document.querySelectorAll(".pop").forEach((p) => p.classList.remove("on")); }
-function togglePop(id) { const p = $(id), was = p.classList.contains("on"); closePops(); if (!was) { p.classList.add("on"); p.querySelector("input")?.focus(); } }
+function togglePop(id) { const p = $(id), was = p.classList.contains("on"); closePops(); if (!was) { p.classList.add("on"); if (id === "popDir") { $("dirBusca").value = ""; dirAtiva = 0; paintDirs(); } p.querySelector("input")?.focus(); } }
 $("dirChip").onclick = $("heroDir").onclick = (e) => { e.stopPropagation(); togglePop("popDir"); };
 $("heroCards").onclick = (e) => {
   const b = e.target.closest("[data-hero]"); if (!b) return;
@@ -2318,7 +2392,7 @@ $("dDelete").onclick = async () => {
 };
 
 fetch("/logo.svg").then((r) => r.text()).then((svg) => document.querySelectorAll("[data-logo]").forEach((el) => (el.innerHTML = svg)));
-api("dirs").then((d) => ($("dirs").innerHTML = d.map((x) => `<option value="${esc(x)}">`).join("")));
+api("dirs").then((d) => { DIRS = d; });
 // primeira vez: o painel abre nos primeiros passos
 refresh().then(() => { go(!S.settings.onboarded && view.type === "home" ? { type: "start" } : S.settings.onboarded && view.type === "start" ? { type: "home" } : view); refresh(true); });
 setInterval(() => document.visibilityState === "visible" && refresh(), 4000);
