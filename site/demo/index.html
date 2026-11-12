@@ -529,6 +529,16 @@
   .toggle { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--fio); width: 100%; }
   .toggle .switch { color: var(--tinta); }
   .toggle small { color: var(--tinta3); margin-left: auto; font-size: 12.5px; text-align: right; }
+  /* skills e MCP: nome e explicação à esquerda, peças no meio, ação à direita */
+  .ferr { display: grid; grid-template-columns: 220px minmax(0, 1fr) auto; gap: 8px 24px; align-items: start; padding: 16px 2px; border-bottom: 1px solid var(--fio); }
+  .ferr-n b { display: block; font-weight: 500; } .ferr-n small { display: block; color: var(--tinta3); font-size: 12.5px; line-height: 1.45; margin-top: 3px; text-wrap: pretty; }
+  .ferr-c { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .ferr-a { padding-top: 3px; }
+  .peca { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px 0 4px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--fio2); font-size: 13px; color: var(--tinta); max-width: 100%; }
+  .peca .selo { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; } .peca .selo svg { width: 12px; height: 12px; }
+  .peca b.num { font-weight: 500; color: var(--tinta2); font-variant-numeric: tabular-nums; }
+  .ferr .resumo { color: var(--tinta2); font-size: 13.5px; } .ferr .vazio-l { color: var(--tinta3); font-size: 13.5px; }
+  @media (max-width: 860px) { .ferr { grid-template-columns: minmax(0, 1fr); } }
   .stats { display: flex; gap: 36px; flex-wrap: wrap; padding: 18px 2px; border-bottom: 1px solid var(--fio); border-top: 1px solid var(--fio); }
   .stats .v { font-size: 22px; font-weight: 500; letter-spacing: -.02em; margin-top: 4px; }
   .hit { padding: 13px 2px; border-bottom: 1px solid var(--fio); }
@@ -2531,17 +2541,28 @@ function renderAccounts() {
 async function renderTools(t) {
   t ||= await api("tools").catch(() => null);
   if (!t) return;
-  const skills = Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${prov(p)?.name || p}: ${n}`).join(" · ");
+  const skills = Object.entries(t.skills).filter(([, n]) => n);
   const mcp = [...new Set([...t.mcp.claude, ...t.mcp.codex])];
   const iso = t.accounts.length;
   paintApps(t);
-  $("toolsBox").innerHTML = `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button><small>${iso ? "" : "Você ainda não tem conta além da padrão; liga quando adicionar uma."}</small></div>
-    <div class="toggle"><span>${skills ? `Skills na conta padrão: ${esc(skills)}.` : "Nenhuma skill instalada na conta padrão."} ${t.on ? `Nas ${plural(iso, "outra conta", "outras contas")}: ${t.accounts.map((a) => `${esc(acc(a.id)?.label || a.id)} com ${a.linked} por atalho${a.own ? ` e ${a.own} própria${a.own > 1 ? "s" : ""}` : ""}`).join("; ") || "nenhuma"}.` : "Ligado, cada skill entra nas outras contas como atalho para a pasta original; o que a conta já tem não é tocado."}</span>${t.on ? `<button class="link" data-tools="sync">Sincronizar agora</button>` : ""}</div>
-    <div class="toggle"><span>Servidores MCP: ${mcp.length ? esc(mcp.join(", ")) : "nenhum configurado"}. ${t.on ? "Vão junto em cada conversa das outras contas do Claude e do Codex." : "Ligado, vão junto em cada conversa das outras contas do Claude e do Codex."} Servidor com login próprio (OAuth) pede o login de novo em cada conta.</span></div>`;
+  // três linhas, cada uma com o nome à esquerda e o conteúdo em peças: nada de parágrafo corrido
+  const linha = (nome, ajuda, corpo, acao = "") => `<div class="ferr"><div class="ferr-n"><b>${nome}</b><small>${ajuda}</small></div><div class="ferr-c">${corpo}</div>${acao ? `<div class="ferr-a">${acao}</div>` : ""}</div>`;
+  const comProprias = t.accounts.filter((a) => a.own).length, porAtalho = Math.max(0, ...t.accounts.map((a) => a.linked));
+  const detalhe = t.accounts.map((a) => `${acc(a.id) ? rot(acc(a.id)) : a.id}: ${a.linked} por atalho${a.own ? `, ${a.own} própria${a.own > 1 ? "s" : ""}` : ""}`).join("\n");
+  $("toolsBox").innerHTML = `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta da máquina</button><small>${iso ? "" : "Você ainda não tem outra conta; liga quando adicionar uma."}</small></div>`
+    + linha("Skills", "Instaladas na conta da máquina de cada provedor.",
+      skills.length ? skills.map(([p, n]) => `<span class="peca"><span class="selo">${plogo(p)}</span>${esc(prov(p)?.name || p)}<b class="num">${n}</b></span>`).join("") : `<span class="vazio-l">Nenhuma skill instalada.</span>`)
+    + (iso ? linha("Nas outras contas", t.on ? "Cada skill entra como atalho para a pasta original; o que a conta já tem não é tocado." : "Ligue a chave acima para as outras contas receberem.",
+      t.on ? `<span class="resumo" title="${esc(detalhe)}">${plural(iso, "conta recebe", "contas recebem")} ${plural(porAtalho, "skill", "skills")} por atalho${comProprias ? `, e ${plural(comProprias, "tem", "têm")} skill própria além dessas` : ""}.</span>` : `<span class="vazio-l">Desligado.</span>`,
+      t.on ? `<button class="link" data-tools="sync">Sincronizar agora</button>` : "") : "")
+    + linha("Servidores MCP", "Vão junto em cada conversa das outras contas do Claude e do Codex. Os que têm login próprio pedem o login de novo em cada conta.",
+      mcp.length ? mcp.map((m) => `<span class="peca">${appSelo(m)}${esc(m)}</span>`).join("") : `<span class="vazio-l">Nenhum configurado.</span>`,
+      `<button class="link" data-ver-apps>Ver apps conectados</button>`);
 }
 $("v-accounts").onclick = async (e) => {
   const b = e.target.closest("button"); if (!b) return;
   const d = b.dataset;
+  if ("verApps" in d) return $("appsPill").click();
   if (d.tools) { b.disabled = true; const t = await api("tools", "POST", d.tools === "sync" ? { sync: true } : { on: d.tools === "1" }).catch(() => null); if (t?.did) toast(d.tools === "0" ? `Atalhos removidos: ${t.did.removed}.` : `Skills ligadas por atalho: ${t.did.linked} nova${t.did.linked === 1 ? "" : "s"}${t.did.removed ? `, ${t.did.removed} removida${t.did.removed === 1 ? "" : "s"}` : ""}.`); await refresh(); return renderTools(t); }
   if (d.free) { await api("limits/" + d.free, "DELETE"); return refresh(); }
   if (d.add) return openDialog(null, d.add);
