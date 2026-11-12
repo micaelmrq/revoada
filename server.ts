@@ -664,6 +664,9 @@ const asModel = (m: unknown) => (m === null || m === "" ? null : validModel(m) ?
 const asEffort = (e: unknown) => (e === null || e === "" ? null : typeof e === "string" && Object.values(EFFORTS).some((l) => l.includes(e)) ? e : undefined);
 const asMode = (m: unknown): Mode => (m === "read" || m === "full" || m === "ask" ? m : "edit");
 // só aceita anexo que este servidor gravou
+// O anexo fica nesta máquina e o agente abre pelo caminho: o teto existe só para um arrasto por engano não encher o disco.
+// Imagem é reduzida na tela antes de subir, porque essa vai dentro do pedido.
+const ATTACH_MAX = 1_000_000_000;
 const asAttachments = (list: unknown): Attachment[] => (Array.isArray(list) ? list : []).filter((a) => a && typeof a.path === "string" && a.path.startsWith(ATTACH + "/") && existsSync(a.path)).slice(0, 10);
 
 // ---------- conversas que já existem nos outros programas ----------
@@ -1053,6 +1056,7 @@ async function agentApi(req: Request, url: URL): Promise<Response> {
 const server = Bun.serve({
   hostname: "127.0.0.1",
   port: PORT,
+  maxRequestBodySize: ATTACH_MAX + 1_000_000, // o padrão do Bun (128 MB) barraria anexo grande antes de chegar na rota
   async fetch(req, srv) {
     const url = new URL(req.url);
     // o servidor abre shells: só aceita chamadas da própria página local
@@ -1138,11 +1142,13 @@ const server = Bun.serve({
         return existsSync(f) ? new Response(Bun.file(f)) : new Response("not found", { status: 404 });
       }
       const name = basename(decodeURIComponent(req.headers.get("x-name") || "arquivo")).replace(/[^\w.\- ]+/g, "_").slice(-80) || "arquivo";
-      const data = await req.arrayBuffer().catch(() => null);
-      if (!data || !data.byteLength) return fail("arquivo vazio");
-      if (data.byteLength > 25_000_000) return fail("anexo grande demais (máximo 25 MB)");
+      const grande = `anexo grande demais (máximo ${Math.round(ATTACH_MAX / 1e9)} GB)`;
+      if (Number(req.headers.get("content-length") || 0) > ATTACH_MAX) return fail(grande);
+      // grava direto no disco, aos pedaços: um PDF de centenas de MB não passa inteiro pela memória
       const aid = crypto.randomUUID().slice(0, 8), path = join(ATTACH, `${aid}-${name}`);
-      writeFileSync(path, new Uint8Array(data));
+      const escrito = await Bun.write(path, new Response(req.body)).catch(() => 0);
+      if (!escrito) { rmSync(path, { force: true }); return fail("arquivo vazio"); }
+      if (escrito > ATTACH_MAX) { rmSync(path, { force: true }); return fail(grande); }
       const mime = req.headers.get("content-type") || "application/octet-stream";
       return json({ id: aid, name, path, mime, image: /^image\/(png|jpe?g|gif|webp)$/.test(mime) } satisfies Attachment);
     }

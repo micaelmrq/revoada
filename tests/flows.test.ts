@@ -1,7 +1,7 @@
 // Fluxos principais, de ponta a ponta: sobe o servidor de verdade numa pasta de usuário
 // descartável, com CLIs de mentira no PATH (tests/stubs), e conversa com ele pela API.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
@@ -237,6 +237,16 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(att.image).toBe(true);
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [att] })))).toContain("imagens=1");
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [{ ...att, path: "/etc/passwd" }] })))).toContain("imagens=0");
+  }, SLOW);
+
+  test("anexo grande entra: um arquivo de 60 MB sobe inteiro, e o vazio é recusado", async () => {
+    const corpo = new Uint8Array(60_000_000); corpo[0] = 37; corpo[corpo.length - 1] = 10;
+    const up = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "application/pdf", "x-name": "Design.pdf" }, body: corpo });
+    const att = await up.json() as any;
+    expect([up.status, att.name, att.image, statSync(att.path).size]).toEqual([200, "Design.pdf", false, 60_000_000]);
+    rmSync(att.path, { force: true });
+    const vazio = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": "nada.txt" }, body: "" });
+    expect((await vazio.json() as any).error).toBe("arquivo vazio");
   }, SLOW);
 
   test("texto colado chega ao agente como texto, com as linhas, e arquivo comum segue como caminho", async () => {

@@ -1999,7 +1999,7 @@ const attHtml = (a, i) => a.pending ? `<span class="att subindo" title="${esc(a.
 function paintAtts() { $("atts").innerHTML = attached.map(attHtml).join(""); paintSend(); }
 // Print copiado no Mac chega como TIFF sem compressão (dezenas de MB) e foto de celular passa fácil do limite: a imagem é
 // redesenhada em PNG, e se ainda ficar pesada, reduzida e passada para JPEG. O agente lê melhor assim e o envio não estoura.
-const IMG_LADO = 2576, IMG_PESO = 4_500_000, ANEXO_MAX = 25_000_000;
+const IMG_LADO = 2576, IMG_PESO = 4_500_000, ANEXO_MAX = 1_000_000_000; // arquivo fica na máquina e o agente abre pelo caminho; imagem é reduzida antes
 async function enxugaImagem(f) {
   const leve = /^image\/(png|jpe?g|gif|webp)$/.test(f.type) && f.size <= IMG_PESO;
   if (!f.type.startsWith("image/") || f.type === "image/gif" || f.type === "image/svg+xml" || leve) return f;
@@ -2022,7 +2022,7 @@ async function addFiles(files, extra = {}) {
     attached.push(vaga); paintAtts();
     const tira = () => { const k = attached.indexOf(vaga); if (k >= 0) attached.splice(k, 1); return k; };
     const f = await enxugaImagem(original);
-    if (f.size > ANEXO_MAX) { tira(); paintAtts(); toast(`${f.name || "O arquivo"} tem ${Math.round(f.size / 1e6)} MB. O limite é 25 MB por anexo.`); continue; }
+    if (f.size > ANEXO_MAX) { tira(); paintAtts(); toast(`${f.name || "O arquivo"} tem ${(f.size / 1e9).toFixed(1).replace(".", ",")} GB. O limite é 1 GB por anexo.`); continue; }
     const r = await fetch("/api/attach", { method: "POST", headers: { "content-type": f.type || "application/octet-stream", "x-name": encodeURIComponent(f.name || `print-${Date.now()}.png`) }, body: f }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
     const k = tira();
