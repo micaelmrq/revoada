@@ -753,6 +753,21 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`closePops(); go({ type: "home" });`);
   }, SLOW);
 
+  test("apps conectados mostram a marca do app conhecido e a inicial do resto, e Todos os agentes chama um rodízio por provedor", async () => {
+    expect(await page(`return ["linear", "linear-pulse", "chrome-devtools", "figma", "aws-mcp", "node_repl", "heroui-pro", "pluma", "arara"].map((n) => appSelo(n).includes("<svg") ? "marca" : appSelo(n).replace(/<[^>]+>/g, ""))`))
+      .toEqual(["marca", "marca", "marca", "marca", "marca", "marca", "marca", "p", "a"]);
+    await page(`go({ type: "home" }); picked.clear(); paintTargets(); togglePop("popTarget");`);
+    const prontos = await page(`return S.providers.filter((p) => p.installed && S.accounts.some((a) => a.provider === p.id && ready(a))).map((p) => "pool:" + p.id)`);
+    if (prontos.length > 1) {
+      await page(`document.querySelector("#popTarget [data-todos]").click();`);
+      expect(await page(`return [targets(), document.querySelector("#popTarget [data-todos]").classList.contains("on")]`)).toEqual([prontos, true]);
+      // clicar de novo desfaz e volta para um só
+      await page(`document.querySelector("#popTarget [data-todos]").click();`);
+      expect(await page(`return targets()`)).toEqual(prontos.slice(0, 1));
+    } else expect(await page(`return !!document.querySelector("#popTarget [data-todos]")`)).toBe(false); // com um provedor só não há o que juntar
+    await page(`closePops(); picked.clear(); store.set("targets", "[]"); paintComposer();`);
+  }, SLOW);
+
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {
     await page(`go({ type: "home" });`);
     const campo = await page(`const c = document.querySelector("#v-home canvas.campo"), v = document.querySelector("#v-home");
