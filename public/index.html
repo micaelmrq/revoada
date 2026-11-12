@@ -105,6 +105,9 @@
   .find:focus-within { box-shadow: inset 0 0 0 1px var(--fio2); color: var(--tinta); }
   .find input { flex: 1; min-width: 0; border: 0; background: none; padding: 0; outline: none; font-size: 14px; }
   kbd { font: 11px var(--mono); color: var(--tinta3); }
+  /* começar uma sala é a primeira linha da lateral, por extenso: antes era só um ícone no canto */
+  .item.nova-sala { color: var(--tinta); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fio2); margin-bottom: 8px; min-height: 34px; }
+  .item.nova-sala:hover { background: var(--sup); } .item.nova-sala.on { background: var(--sup); }
   .rolagem { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 14px; }
   .item { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 5px 8px; border-radius: 8px; color: var(--tinta2); min-width: 0; font-size: 14px; transition: background .1s ease; }
   .item:hover { background: var(--sup); color: var(--tinta); }
@@ -641,11 +644,11 @@
 <body>
 <aside>
   <div class="lat-topo"><div class="marca"><span data-logo></span>revoada</div>
-    <button class="ic-b" id="findBtn" data-ic="busca" title="Buscar conversas (⌘K)" aria-label="Buscar conversas"></button>
-    <button class="ic-b" data-go="home" data-ic="nova" title="Nova sala (⌘N)" aria-label="Nova sala"></button></div>
+    <button class="ic-b" id="findBtn" data-ic="busca" title="Buscar conversas (⌘K)" aria-label="Buscar conversas"></button></div>
   <label class="find" data-ic="busca"><input id="tq" placeholder="Buscar conversas" autocomplete="off" spellcheck="false" aria-label="Buscar conversas"><kbd>esc</kbd></label>
   <div class="rolagem">
     <div class="nav">
+      <button class="item nova-sala" data-go="home" data-ic="nova"><span class="t">Nova sala</span><span class="cauda"><kbd>⌘N</kbd></span></button>
       <button class="item atencao" data-go="need" data-ic="sino"><span class="t">Precisa de você</span><span class="cauda"><span class="conta-n num" id="needCount" hidden></span></span></button>
       <button class="item" data-go="sched" data-ic="ciclo"><span class="t">Rotinas</span><span class="cauda"><span class="num" id="schedCount"></span></span></button>
       <button class="item" data-go="board" data-ic="tarefas"><span class="t">Tarefas</span><span class="cauda"><span class="num" id="boardCount"></span></span></button>
@@ -677,7 +680,7 @@
       <h1>O que vamos fazer em <button id="heroDir"></button>?</h1>
       <p id="heroSub"></p>
       <div class="cartoes" id="heroCards">
-        <button data-hero="target" data-ic="arroba"><b>Escolher quem responde</b><span>Uma conta, o rodízio ou várias em paralelo</span></button>
+        <button data-hero="target" data-ic="arroba"><b>Escolher quem responde</b><span>Um agente, ou vários numa sala conversando entre si</span></button>
         <button data-hero="dir" data-ic="pasta"><b>Trocar de projeto</b><span>A pasta em que o agente trabalha</span></button>
         <button data-hero="board" data-ic="tarefas"><b>Despejar tarefas</b><span>Uma por linha, cada uma com o seu agente</span></button>
       </div>
@@ -1147,7 +1150,7 @@ function renderThreads() {
     // Salas: as conversas, da mais recente para a mais antiga
     const SHOWN = 8, wide = expanded.has("salas");
     html = `<div class="grupo">Salas</div>` // quem começa uma sala é o botão do topo (⌘N); um segundo + aqui fazia a mesma coisa com outro nome
-      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma sala ainda. Comece uma.</button>`)
+      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma sala ainda. Comece em Nova sala.</button>`)
       + (side.length > SHOWN ? `<button class="item more" data-more="salas">${wide ? "Mostrar menos" : "Mostrar mais"}</button>` : "");
     const shelved = archivedThreads(all), showShelved = expanded.has("arquivadas");
     if (shelved.length) html += `<button class="item more" data-more="arquivadas">${showShelved ? "Esconder arquivadas" : `Arquivadas ${shelved.length}`}</button>` + (showShelved ? shelved.map((t) => threadRow(t, "")).join("") : "");

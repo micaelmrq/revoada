@@ -532,7 +532,8 @@ describe.skipIf(!CHROME)("tela", () => {
       salas: [...document.querySelectorAll("#threads > .item[data-open]")].map((b) => b.dataset.open), first: all.slice(0, 8).map((t) => t.type + ":" + t.id), more: !!document.querySelector('#threads [data-more="salas"]'),
       hash: !!document.querySelector("#threads > .item[data-open] svg.i"), dirs: [...document.querySelectorAll("#threads .org-cab [data-dir]")].map((b) => [b.dataset.dir, b.getAttribute("aria-expanded")]), nav: [...document.querySelectorAll("aside .nav .item")].filter((b) => b.getBoundingClientRect().height).map((b) => b.querySelector(".t").textContent) };`);
     expect(side.groups).toEqual(["Salas", "Projetos"]);
-    expect(side.nav).toEqual(["Precisa de você", "Rotinas", "Tarefas"]);
+    expect(side.nav).toEqual(["Nova sala", "Precisa de você", "Rotinas", "Tarefas"]); // começar uma sala é a primeira linha, por extenso
+    expect(await page(`const b = document.querySelector("aside .item.nova-sala"); go({ type: "accounts" }); b.click(); return [view.type, b.innerText.replace(/\\s+/g, " ").trim(), !!document.querySelector('aside .lat-topo [data-go="home"]')]`)).toEqual(["home", "Nova sala ⌘N", false]);
     expect(side.total).toBeGreaterThan(8);          // os testes de cima já abriram mais conversas do que cabem
     expect(side.salas).toEqual(side.first);         // as oito mais recentes, na ordem
     expect([side.more, side.hash]).toEqual([true, true]);
