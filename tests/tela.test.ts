@@ -757,7 +757,32 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`go({ type: "home" }); window.confirm = () => true; document.querySelector("#appsPill").click();`);
     await until(`document.querySelector("#appsDlg").open && document.querySelector('#appsBody [data-app-poe="linear"]')`);
     const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Adicionar app") && b.innerText.includes("Outro endereço"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
-    expect(inicio).toEqual({ secao: true, catalogo: ["linear", "notion", "figma", "sentry", "stripe", "vercel", "supabase"], marca: true, agentes: ["Claude:true", "Codex:true"], larga: false });
+    expect({ ...inicio, catalogo: inicio.catalogo.length >= 25 && ["linear", "notion", "figma", "cloudflare", "atlassian", "trello"].every((x) => inicio.catalogo.includes(x)) }).toEqual({ secao: true, catalogo: true, marca: true, agentes: ["Claude:true", "Codex:true"], larga: false });
+    // categoria e busca filtram o catálogo; a busca também consulta o registro público (aqui, o de mentira)
+    await page(`document.querySelector('#appsBody [data-app-area="design"]').click();`);
+    expect(await page(`return [...document.querySelectorAll("#appsBody [data-app-poe]")].map((x) => x.dataset.appPoe).sort()`)).toEqual(["figma", "miro"]);
+    await page(`document.querySelector('#appsBody [data-app-area=""]').click(); const q = document.querySelector("#appBusca"); q.focus(); q.value = "planilhas"; q.dispatchEvent(new InputEvent("input", { bubbles: true }));`);
+    await until(`document.querySelector('#appsBody [data-app-reg="dev.exemplo/planilhas"]')`);
+    expect(await page(`const b = document.querySelector("#appsBody"); return [b.querySelectorAll("[data-app-poe]").length, [...b.querySelectorAll("[data-app-reg]")].map((x) => x.dataset.appReg), b.innerText.includes("Nenhum app do catálogo com esse nome."), b.innerText.includes("3 resultados pedem chave"), b.innerText.includes("a Revoada não confere quem publicou"), document.activeElement.id, document.querySelector("#appBusca").value]`))
+      .toEqual([0, ["dev.exemplo/planilhas", "io.github.fulano/planilhas-local"], true, true, true, "appBusca", "planilhas"]);
+    await page(`document.querySelector('#appsBody [data-app-reg="dev.exemplo/planilhas"]').click();`);
+    await until(`document.querySelector('#appsBody [data-app="planilhas"]') && !document.querySelector('#appsBody [data-app-reg="dev.exemplo/planilhas"]')`);
+    expect(await page(`return [document.querySelector('#appsBody [data-app="planilhas"] .app-n').innerText.replace(/\\s+/g, " "), document.querySelector("#toast").textContent]`)).toEqual(["planilhas mcp.exemplo.dev", "planilhas instalado no Claude e no Codex."]);
+    await page(`document.querySelector('#appsBody [data-app-tira="planilhas"]').click();`);
+    await until(`!document.querySelector('#appsBody [data-app="planilhas"]')`);
+    await page(`const q = document.querySelector("#appBusca"); q.value = "git"; q.dispatchEvent(new InputEvent("input", { bubbles: true }));`);
+    // app que pede chave: o cartão abre o campo, e sem chave o servidor recusa com a frase
+    await page(`document.querySelector('#appsBody [data-app-chave="github"]').click();`);
+    expect(await page(`return [document.activeElement.id, getComputedStyle(document.querySelector("#appChave")).webkitTextSecurity, document.querySelector(".app-c.com-chave").innerText.includes("o Codex não aceita chave por aqui")]`)).toEqual(["appChave", "disc", true]);
+    await page(`document.querySelector('#appsBody .com-chave [data-app-poe="github"]').click();`);
+    await until(`document.querySelector("#toast").textContent.includes("Cole a chave de acesso do GitHub")`);
+    await page(`document.querySelector("#appChave").value = "ghp_chave_da_tela_123"; document.querySelector('#appsBody .com-chave [data-app-poe="github"]').click();`);
+    await until(`document.querySelector('#appsBody [data-app="github"]') && !document.querySelector("#appChave")`);
+    expect(await page(`return [document.querySelector('#appsBody [data-app="github"] .app-e').innerText.split(/\\s/)[0], document.body.innerHTML.includes("ghp_chave")]`)).toEqual(["Claude", false]);
+    await page(`document.querySelector('#appsBody [data-app-tira="github"]').click();`);
+    await until(`!document.querySelector('#appsBody [data-app="github"]')`);
+    await page(`const q = document.querySelector("#appBusca"); q.value = ""; q.dispatchEvent(new InputEvent("input", { bubbles: true }));`);
+    await until(`document.querySelector('#appsBody [data-app-poe="linear"]')`);
     // instalar: o app sai do catálogo, entra na lista e os dois CLIs informam que falta entrar
     await page(`document.querySelector('#appsBody [data-app-poe="linear"]').click();`);
     await until(`document.querySelector('#appsBody [data-app="linear"] [data-app-login]') && !document.querySelector('#appsBody [data-app-poe="linear"]')`);

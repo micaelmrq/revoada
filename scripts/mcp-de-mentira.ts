@@ -42,9 +42,10 @@ export async function mcpDeMentira(cli: "claude" | "codex", a: string[]): Promis
   const [, acao, ...resto] = a;
   if (acao === "add") {
     const corte = resto.indexOf("--"), antes = corte < 0 ? resto : resto.slice(0, corte), comando = corte < 0 ? [] : resto.slice(corte + 1);
-    const soltos: string[] = []; let url = "";
+    const soltos: string[] = [], headers: Record<string, string> = {}; let url = "";
     for (let i = 0; i < antes.length; i++) {
       if (antes[i] === "--url") url = antes[++i];
+      else if (antes[i] === "--header" || antes[i] === "-H") { const [k, ...v] = antes[++i].split(":"); headers[k.trim()] = v.join(":").trim(); }
       else if (["--scope", "-s", "--transport", "-t"].includes(antes[i])) i++;
       else soltos.push(antes[i]);
     }
@@ -53,7 +54,7 @@ export async function mcpDeMentira(cli: "claude" | "codex", a: string[]): Promis
     if (!name || (!url && !comando.length)) sai(2, "error: missing required argument");
     if (name.startsWith("falha")) sai(1, `Error: could not reach the server for ${name}`);
     if (name in todos()) sai(1, `MCP server ${name} already exists in user config`);
-    poe(name, url ? { type: "http", url } : { type: "stdio", command: comando[0], args: comando.slice(1) });
+    poe(name, url ? { type: "http", url, ...(Object.keys(headers).length ? { headers } : {}) } : { type: "stdio", command: comando[0], args: comando.slice(1) });
     if (cli === "codex" && url.includes("espera")) { console.log("Detected OAuth support. Starting OAuth flow…"); await entra(name); }
     sai(0, `Added ${url ? "HTTP" : "stdio"} MCP server ${name}`);
   }

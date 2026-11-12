@@ -7,12 +7,13 @@
 //    vão como argumento em cada execução que a Revoada inicia.
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { join } from "path";
-import { CATALOGO } from "./apps";
+import { AREAS, CATALOGO } from "./apps";
 
 type Acc = { id: string; provider: string; home: string | null };
 type Proc = { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
 type Estado = { estado: "pronto" | "entrar" | "entrando" | "falhou" | "instalado"; nota?: string };
-export type Pedido = { name: string; url?: string; comando?: string[] };
+// `cabecalho` (a chave de um app que pede token) só o Claude recebe; `so` limita os agentes em que o pedido vale
+export type Pedido = { name: string; url?: string; comando?: string[]; cabecalho?: string; so?: string[] };
 
 const CLIS = ["claude", "codex"] as const;
 const NOME_CLI: Record<string, string> = { claude: "Claude", codex: "Codex" };
@@ -38,10 +39,15 @@ function partes(s: string): string[] | null {
 }
 
 // o que a tela mandou vira um pedido conferido, ou a frase do que está errado
-export function pedido(body: { app?: unknown; name?: unknown; endereco?: unknown }): Pedido | string {
+export function pedido(body: { app?: unknown; name?: unknown; endereco?: unknown; chave?: unknown }): Pedido | string {
   if (typeof body.app === "string" && body.app) {
     const app = CATALOGO.find((a) => a.id === body.app);
-    return app ? { name: app.id, url: app.url } : "Esse app não existe no catálogo.";
+    if (!app) return "Esse app não existe no catálogo.";
+    if (app.login !== "token") return { name: app.id, url: app.url };
+    const chave = String(body.chave ?? "").trim();
+    if (!chave) return `Cole a chave de acesso do ${app.nome} para instalar.`;
+    if (chave.length < 8 || chave.length > 600 || /[\s\x00-\x1f]/.test(chave)) return "A chave de acesso parece inválida: confira se copiou inteira e sem espaços.";
+    return { name: app.id, url: app.url, cabecalho: `Authorization: Bearer ${chave.replace(/^Bearer\s*/i, "")}`, so: ["claude"] };
   }
   const name = String(body.name ?? "").trim(), alvo = String(body.endereco ?? "").trim();
   if (!name) return "Escreva um nome para o app.";
@@ -190,8 +196,9 @@ export function createTools(o: { home: string; root: string; spawn?: (provider: 
 
   async function installOne(provider: string, p: Pedido): Promise<{ ok: boolean; erro?: string; login?: boolean }> {
     if (p.name in servers(provider)) return { ok: false, erro: `O ${NOME_CLI[provider]} já tem um app com esse nome.` };
+    if (p.so && !p.so.includes(provider)) return { ok: false, erro: `Este app pede uma chave, e por aqui ela só pode ser guardada no ${p.so.map((x) => NOME_CLI[x]).join(" e ")}.` };
     const args = provider === "claude"
-      ? ["mcp", "add", "--scope", "user", ...(p.url ? ["--transport", "http", p.name, p.url] : [p.name, "--", ...p.comando!])]
+      ? ["mcp", "add", "--scope", "user", ...(p.url ? ["--transport", "http", p.name, p.url, ...(p.cabecalho ? ["--header", p.cabecalho] : [])] : [p.name, "--", ...p.comando!])]
       : ["mcp", "add", p.name, ...(p.url ? ["--url", p.url] : ["--", ...p.comando!])];
     const proc = sobe(provider, args);
     if (!proc) return { ok: false, erro: falha(provider, "instalar", { code: 127, out: "", err: "" }) };
@@ -213,7 +220,8 @@ export function createTools(o: { home: string; root: string; spawn?: (provider: 
   }
   async function install(p: Pedido, provedores: string[]) {
     const out: Record<string, { ok: boolean; erro?: string; login?: boolean }> = {};
-    for (const provider of provedores) out[provider] = await installOne(provider, p);
+    for (const provider of p.so ? provedores.filter((x) => p.so!.includes(x)) : provedores) out[provider] = await installOne(provider, p);
+    if (!Object.keys(out).length) out[provedores[0]] = await installOne(provedores[0], p);
     return out;
   }
   async function remove(name: string, provedores: string[]) {
@@ -286,7 +294,8 @@ export function createTools(o: { home: string; root: string; spawn?: (provider: 
       return {
         clis,
         apps: nomes.map((name) => { const meus = todos.filter((t) => t.name === name); return { name, em: meus.map((t) => t.c), remoto: meus.some((t) => remoto(t.def)), onde: onde(meus[0].def) }; }),
-        catalogo: CATALOGO.map((a) => ({ id: a.id, nome: a.nome, o_que: a.o_que, onde: new URL(a.url).host, falta: CLIS.filter((c) => clis[c] && !todos.some((t) => t.c === c && (t.name === a.id || (remoto(t.def) && mesmoEndereco(t.def.url, a.url))))) })),
+        areas: AREAS.filter(([id]) => CATALOGO.some((a) => a.area === id)),
+        catalogo: CATALOGO.map((a) => ({ id: a.id, nome: a.nome, o_que: a.o_que, area: a.area, login: a.login, onde: new URL(a.url).host, falta: CLIS.filter((c) => clis[c] && (a.login !== "token" || c === "claude") && !todos.some((t) => t.c === c && (t.name === a.id || (remoto(t.def) && mesmoEndereco(t.def.url, a.url))))) })),
       };
     },
     // o que existe na fonte, pra tela mostrar

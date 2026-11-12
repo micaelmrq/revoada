@@ -13,6 +13,7 @@ import { createSchedules } from "./schedule";
 import { createBoard } from "./board";
 import { routable } from "./route";
 import { createTools, pedido } from "./tools";
+import { createRegistro } from "./registro";
 import { readOnlyTool } from "./safe";
 import { createHmac, timingSafeEqual } from "crypto";
 import { GUIDE } from "./agent-guide";
@@ -280,6 +281,7 @@ const tools = createTools({ home: HOME, root: ROOT, spawn(provider, args) {
   const bin = binPath(provider), acc = accounts.find((a) => a.provider === provider && !a.home);
   return bin && acc ? Bun.spawn([bin, ...args], { cwd: HOME, env: envFor(acc), stdin: "ignore", stdout: "pipe", stderr: "pipe" }) : null;
 } });
+const registro = createRegistro({ url: process.env.REVOADA_REGISTRY });
 const toolsInfo = () => ({ on: settings.shareTools, ...tools.summary(accounts), ...tools.apps({ claude: !!binPath("claude"), codex: !!binPath("codex") }) });
 const extraArgs = (acc: { id: string; provider: string; home: string | null }) => (settings.shareTools ? tools.mcpArgs(acc) : []);
 
@@ -1269,6 +1271,12 @@ const server = Bun.serve({
 
     if (resource === "tools") {
       if (id === "status" && req.method === "GET") return json(await tools.status());
+      if (id === "busca" && req.method === "GET") {
+        const q = (url.searchParams.get("q") || "").trim().slice(0, 80);
+        if (q.length < 2) return json({ achados: [], fora: 0 });
+        try { return json(await registro.busca(q)); }
+        catch (e: any) { return fail(`Não consegui consultar o registro público de MCP agora (${String(e?.message || e).slice(0, 120)}). O catálogo e "Outro endereço" continuam valendo.`, 502, "registro_fora"); }
+      }
       if (req.method === "POST" && id) {
         const clis = ["claude", "codex"].filter((p) => binPath(p));
         // deu certo em ao menos um agente: 200 com o resultado de cada um; em nenhum: o erro do CLI, em frase
@@ -1277,7 +1285,7 @@ const server = Bun.serve({
         const quais = (Array.isArray(body.providers) ? body.providers : clis).filter((p: unknown) => p === "claude" || p === "codex") as string[];
         if (!quais.length) return fail("Escolha em qual agente o app entra: Claude, Codex ou os dois.");
         if (id === "install") {
-          const p = pedido(body);
+          const p = typeof body.registro === "string" && body.registro ? (await registro.pedido(body.registro.slice(0, 200))) || "Não achei mais esse app no registro público. Busque de novo." : pedido(body);
           if (typeof p === "string") return fail(p);
           const results = await tools.install(p, quais);
           return feito(p.name, results);
