@@ -358,6 +358,12 @@
   .att img, .att .doc { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; background: var(--sup2); display: grid; place-items: center; color: var(--tinta2); font-size: 10px; flex: none; }
   .att span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .att button { color: var(--tinta3); padding: 0 2px; } .att button:hover { color: var(--erro); }
+  #vozBtn { color: var(--tinta3); } #vozBtn[aria-pressed="true"] { color: var(--tinta); background: var(--sup2); }
+  #vozBtn.falando svg { animation: pulsa 1.1s ease-in-out infinite; }
+  #micChip { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; color: var(--tinta2); }
+  #micChip[aria-pressed="true"] { color: var(--sobre-botao); background: var(--erro); box-shadow: 0 0 0 4px color-mix(in srgb, var(--erro) 22%, transparent); }
+  @keyframes pulsa { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { #vozBtn.falando svg { animation: none; } }
   /* na caixa de pedido: cartões como os do Claude, a imagem em miniatura quadrada e o × no canto */
   #atts { gap: 10px; padding: 2px 0 12px; }
   #atts .att { position: relative; padding: 0; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio2); background: var(--fundo); height: 72px; max-width: 200px; overflow: visible; }
@@ -720,7 +726,7 @@
   <section class="view" id="v-chat">
     <header class="topo"><h1 data-ic="sala"><span id="chTitle"></span></h1><span class="proj" id="chDir"></span>
       <div class="abas"><button aria-current="true">Conversa</button><button id="chTerm" title="Abre o terminal do agente desta conversa, na mesma pasta">Terminal</button></div>
-      <span class="fim"><span id="chActs"></span><button class="conta-uso" id="chAcc" title="Conta que está respondendo. Clique para ver em Contas."></button></span></header>
+      <span class="fim"><button class="ic-b" id="vozBtn" aria-pressed="false"></button><span id="chActs"></span><button class="conta-uso" id="chAcc" title="Conta que está respondendo. Clique para ver em Contas."></button></span></header>
     <p class="sub" id="chSub"></p>
     <div class="chatscroll" id="chatScroll"><div class="msgs" id="msgs"></div><div class="msgs" id="queued"></div></div>
   </section>
@@ -752,6 +758,7 @@
         <div class="row">
           <button class="chip" id="attChip" title="Anexar imagem ou arquivo. Também dá para colar um print ou arrastar para cá." aria-label="Anexar imagem ou arquivo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <span class="sp"></span>
+          <button class="chip" id="micChip" hidden aria-pressed="false"></button>
           <button class="send" id="send" title="Enviar (Enter)" aria-label="Enviar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
         </div>
       </div>
@@ -760,6 +767,7 @@
           <button class="chip" id="isoChip" title="O agente trabalha numa cópia própria do repositório, num branch novo. A cópia some sozinha quando o trabalho vira PR ou não sobra nada só nela."></button>
           <button class="chip" id="termChip" title="Abre o terminal do próprio agente em vez da conversa"></button>
           <button class="chip" id="supChip" title="Um agente divide o pedido em tarefas, você aprova o plano, cada tarefa roda numa cópia isolada em contas diferentes, outra conta revisa e no fim um agente junta tudo."></button>
+          <button class="chip" id="salaChip" title="Sala: os agentes escolhidos conversam entre si na mesma conversa, um por vez, lendo uns aos outros. Desligado, cada um responde sozinho, lado a lado."></button>
           <button class="chip" id="schedChip" title="Rodar este pedido mais tarde ou todo dia" aria-label="Agendar"></button>
         <span class="sp"></span>
           <button class="chip" id="modelChip" title="Modelo e esforço das próximas respostas"></button>
@@ -846,6 +854,7 @@ let useBrain = store.get("brain", "1") === "1", mode = store.get("mode", "ask"),
 // próxima mensagem provável: aparece no campo vazio quando o agente termina
 const suggestion = () => (view.type === "chat" && chat && !chat.working && chat.suggest && !$("prompt").value && !attached.length ? chat.suggest : "");
 let attached = []; // anexos esperando o próximo envio
+let sala = store.get("sala", "1") === "1"; // com vários agentes escolhidos: conversam numa sala (padrão) ou respondem em paralelo
 let rewriting = null; // índice da mensagem sua que está sendo reescrita no campo
 // modelo e esforço escolhidos, por provedor: { claude: { model: "opus", effort: "high" } }. Vazio = padrão da conta.
 const choice = JSON.parse(store.get("models", "{}"));
@@ -1424,11 +1433,15 @@ function paintComposer() {
   $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? "Escreva a próxima: entra quando o agente terminar" : "Responder";
   const ts = targets();
   const pv = curProvider(), ch = curChoice();
-  $("modelChip").style.display = pv && !terminal ? "inline-flex" : "none";
+  $("modelChip").style.display = pv && !terminal && !(inChat && chat?.room) && !(!inChat && targets().length > 1 && sala) ? "inline-flex" : "none"; // na sala cada agente fala no padrão da própria conta
   $("modelChip").innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9.5 2.5v3.5M14.5 2.5v3.5M9.5 18v3.5M14.5 18v3.5M2.5 9.5H6M2.5 14.5H6M18 9.5h3.5M18 14.5h3.5"/></svg><span class="lb">${esc(ch.model ? modelName(pv, ch.model) : "Modelo padrão")}${ch.effort && EFFORT_NAME[ch.effort] ? `<i> · ${esc(EFFORT_NAME[ch.effort])}</i>` : ""}</span>`;
   $("modelChip").classList.toggle("on", !!(ch.model || ch.effort));
   paintUsageChip();
-  const who = !ts.length ? "Nenhuma conta pronta" : ts.length === 1 ? targetName(ts[0]) : `${ts.length} contas em paralelo`;
+  const podeSala = !inChat && ts.length > 1 && !terminal && !supervisor, naSala = inChat && chat?.room;
+  const who = naSala ? `Sala · ${chat.room.length} agentes` : !ts.length ? "Nenhuma conta pronta" : ts.length === 1 ? targetName(ts[0]) : podeSala && sala ? `Sala com ${ts.length} agentes` : `${ts.length} contas em paralelo`;
+  $("salaChip").style.display = podeSala ? "inline-flex" : "none";
+  $("salaChip").innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v4a2.5 2.5 0 0 1-2.5 2.5H9l-3.5 3v-3A2.5 2.5 0 0 1 4 10.5z"/><path d="M19 9.5a2.5 2.5 0 0 1 1.5 2.3v3.7a2.5 2.5 0 0 1-2 2.45V20l-3-2h-4"/></svg><span class="lb">${sala ? "Sala: conversam entre si" : "Em paralelo: cada um sozinho"}</span>`;
+  $("salaChip").classList.toggle("on", sala);
   $("targetChip").innerHTML = `<span class="lb">${esc(who)}</span>${ICON.down}`; $("targetChip").title = who;
   $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro</span>`; $("brainChip").classList.toggle("on", useBrain);
   $("modeChip").innerHTML = `${ICON.edit}<span class="lb">${MODES[mode]}</span>`; $("modeChip").classList.toggle("on", mode !== "read"); $("modeChip").title = MODE_HINT[mode] + " Clique para trocar.";
@@ -1676,6 +1689,77 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault(); b.click();
 });
 
+// ---------- voz ----------
+// Com a voz ligada, cada resposta que termina é lida em voz alta; na sala cada agente tem a sua voz e diz o nome antes.
+// O microfone dita o pedido. Voz ligada e microfone usado viram conversa de mãos livres: você fala, eles respondem
+// falando, e o microfone reabre quando terminam. Tudo com o que o navegador já tem (síntese e reconhecimento de fala).
+const Reconhece = window.SpeechRecognition || window.webkitSpeechRecognition, sintese = window.speechSynthesis;
+const VOZ_TOM = { claude: [1, 1.05], codex: [0.8, 1.02], gemini: [1.2, 1.08], grok: [0.92, 0.98] }; // tom e ritmo por provedor
+let voz = store.get("voz", "0") === "1", ouvindo = null, maosLivres = false, vozChat = "", falados = new Set(), naFila = 0;
+const ICO_VOZ = (on) => `<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 8v4h3L10.5 15.5v-11L6.5 8z"/>${on ? '<path d="M13 7.5a3.5 3.5 0 0 1 0 5M15 5.5a6.5 6.5 0 0 1 0 9"/>' : '<path d="m13.5 8 3.5 4M17 8l-3.5 4"/>'}</svg>`;
+const ICO_MIC = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>`;
+// texto para ouvir: sem bloco de código, sem marcação, sem endereço comprido, e curto
+function paraOuvir(t) {
+  return String(t || "").replace(/```[\s\S]*?```/g, " Trecho de código. ").replace(/`([^`]+)`/g, "$1").replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/https?:\/\/\S+/g, " link ")
+    .replace(/^\s*\|.*\|\s*$/gm, " ").replace(/^\s{0,3}(#{1,6}|[-*+]|\d+\.)\s+/gm, "").replace(/[*_~>#]/g, "").replace(/\s+/g, " ").trim().slice(0, 700);
+}
+function vozDe(provider) {
+  const vs = sintese.getVoices().filter((v) => /^pt(-|_)BR/i.test(v.lang)), todas = vs.length ? vs : sintese.getVoices().filter((v) => /^pt/i.test(v.lang));
+  return todas.length ? todas[Math.max(0, Object.keys(VOZ_TOM).indexOf(provider)) % todas.length] : null;
+}
+function fala(texto, provider) {
+  if (!sintese || !texto) return;
+  const u = new SpeechSynthesisUtterance(texto), v = vozDe(provider), [tom, ritmo] = VOZ_TOM[provider] || [1, 1];
+  u.lang = "pt-BR"; if (v) u.voice = v; u.pitch = tom; u.rate = ritmo;
+  naFila++; $("vozBtn").classList.add("falando");
+  u.onend = u.onerror = () => { naFila = Math.max(0, naFila - 1); if (!naFila) { $("vozBtn").classList.remove("falando"); retomaEscuta(); } };
+  sintese.speak(u);
+}
+function calaVoz() { naFila = 0; sintese?.cancel(); $("vozBtn").classList.remove("falando"); }
+function paintVoz() {
+  $("vozBtn").hidden = !sintese;
+  $("vozBtn").innerHTML = ICO_VOZ(voz); $("vozBtn").setAttribute("aria-pressed", String(voz));
+  $("vozBtn").title = voz ? "Voz ligada: as respostas são lidas em voz alta. Clique para desligar." : "Ler as respostas em voz alta";
+  $("vozBtn").setAttribute("aria-label", voz ? "Desligar a voz" : "Ligar a voz");
+  $("micChip").hidden = !Reconhece;
+  $("micChip").innerHTML = ICO_MIC; $("micChip").setAttribute("aria-pressed", String(!!ouvindo));
+  $("micChip").title = ouvindo ? "Ouvindo. Clique para parar." : voz ? "Falar o pedido. Com a voz ligada, ele é enviado quando você para de falar." : "Ditar o pedido";
+  $("micChip").setAttribute("aria-label", ouvindo ? "Parar de ouvir" : "Falar o pedido");
+}
+// chamada a cada pintura da conversa: fala o que terminou desde a última vez; ao abrir uma conversa, o que já estava lá fica calado
+function falaNovas() {
+  if (!chat) return;
+  const chave = (m, i) => `${chat.id}:${i}:${m.at}`;
+  if (vozChat !== chat.id) { vozChat = chat.id; calaVoz(); falados = new Set(chat.messages.map(chave)); return; }
+  chat.messages.forEach((m, i) => {
+    if (m.role !== "assistant") return void falados.add(chave(m, i));
+    if (m.state === "working" || falados.has(chave(m, i))) return;
+    falados.add(chave(m, i));
+    if (!voz || m.state !== "done") return;
+    const a = acc(m.accountId), texto = paraOuvir((m.items || []).filter((x) => x.kind === "text").map((x) => x.text).join("\n"));
+    if (texto) fala(chat.room && a ? `${prov(a.provider)?.name || ""}. ${texto}` : texto, a?.provider || chat.provider);
+  });
+  if (!chat.working && !naFila) retomaEscuta();
+}
+function escuta() {
+  if (!Reconhece || ouvindo) return;
+  calaVoz(); // falar por cima interrompe a leitura
+  const r = new Reconhece(), antes = $("prompt").value ? $("prompt").value.replace(/\s*$/, " ") : "";
+  let dito = "";
+  r.lang = "pt-BR"; r.interimResults = true; r.continuous = false;
+  r.onresult = (e) => { dito = [...e.results].map((x) => x[0].transcript).join(" ").trim(); $("prompt").value = antes + dito; $("prompt").dispatchEvent(new Event("input", { bubbles: true })); };
+  r.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { maosLivres = false; toast("O microfone não está liberado para o Revoada. Libere em Ajustes do Sistema > Privacidade e Segurança > Microfone e Reconhecimento de Fala."); } else if (e.error !== "no-speech" && e.error !== "aborted") toast("Não consegui ouvir agora."); if (e.error === "no-speech") maosLivres = false; };
+  r.onend = () => { ouvindo = null; paintVoz(); if (voz && dito && view.type !== "accounts") { maosLivres = true; $("send").click(); } };
+  ouvindo = r; paintVoz();
+  try { r.start(); } catch { ouvindo = null; paintVoz(); }
+}
+// mãos livres: depois que a sala termina de falar, o microfone reabre para a sua vez
+function retomaEscuta() { if (voz && maosLivres && !ouvindo && Reconhece && view.type === "chat" && chat && !chat.working) setTimeout(() => { if (voz && maosLivres && !ouvindo && !naFila && !chat?.working) escuta(); }, 350); }
+$("vozBtn").onclick = () => { voz = !voz; store.set("voz", voz ? "1" : "0"); if (!voz) { calaVoz(); maosLivres = false; } else if (sintese) { const u = new SpeechSynthesisUtterance("Voz ligada."); u.lang = "pt-BR"; const v = vozDe("claude"); if (v) u.voice = v; sintese.speak(u); } paintVoz(); };
+$("micChip").onclick = () => { if (ouvindo) { maosLivres = false; ouvindo.stop(); } else escuta(); };
+sintese?.addEventListener?.("voiceschanged", () => {});
+paintVoz();
+
 // anexos: botão, colar e arrastar. Ficam em cartões dentro da caixa, acima do texto, com o × no canto.
 const attUrl = (a) => `/api/attach/${encodeURIComponent(a.path.split("/").pop())}`;
 const attExt = (a) => (a.name.includes(".") ? a.name.split(".").pop() : "").slice(0, 4);
@@ -1736,6 +1820,7 @@ for (const ev of ["dragenter", "dragover"]) $("composer").addEventListener(ev, (
 for (const ev of ["dragleave", "drop"]) $("composer").addEventListener(ev, (e) => { $("composer").classList.remove("drop"); if (ev === "drop" && e.dataTransfer?.files.length) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
 $("termChip").onclick = () => { terminal = !terminal; if (terminal) supervisor = false; paintComposer(); };
 $("supChip").onclick = () => { supervisor = !supervisor; paintComposer(); $("prompt").focus(); };
+$("salaChip").onclick = () => { sala = !sala; store.set("sala", sala ? "1" : "0"); paintComposer(); $("prompt").focus(); };
 
 // ---------- agendar ----------
 const DAY = ["D", "S", "T", "Q", "Q", "S", "S"], DAYNAME = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -1875,6 +1960,7 @@ addEventListener("keydown", (e) => {
   if (b) { e.preventDefault(); b.click(); }
 });
 $("send").onclick = async () => {
+  calaVoz(); // mandou mensagem: quem estava sendo lido se cala
   if (view.type === "chat" && chat?.working && !$("prompt").value.trim() && !attached.length) return api(`convos/${chat.id}/stop`, "POST", {});
   const ts = targets(); if (!ts.length) return toast("Nenhuma conta pronta. Faça login em Contas.");
   const text = $("prompt").value;
@@ -1891,7 +1977,7 @@ $("send").onclick = async () => {
     const m = await api("missions", "POST", { prompt: text, cwd: cwd(), targets: ts });
     supervisor = false; clear(); await refresh(); return go({ type: "mission", id: m.id });
   }
-  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: attached, model: curChoice().model || null, effort: curChoice().effort || null });
+  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: attached, model: curChoice().model || null, effort: curChoice().effort || null, room: ts.length > 1 && sala && !terminal });
   isolate = null; repo.cwd = "";
   clear(); await refresh(); go({ type: r.kind, id: r.id });
 };
@@ -2115,9 +2201,10 @@ function renderChat() {
   const dirHtml = `${ic("pasta")}<span>${esc(chat.worktree ? base(chat.worktree.main) : brief(short(chat.cwd)))}</span>`;
   if ($("chDir").innerHTML !== dirHtml) $("chDir").innerHTML = dirHtml;
   $("chDir").title = short(chat.cwd);
-  $("chSub").textContent = [chat.worktree && `cópia isolada de ${base(chat.worktree.main)}, branch ${chat.worktree.branch}`, chat.by && "aberta por um agente", !chat.native && chat.messages.length > 2 && "próxima resposta leva o histórico", spent && `${tok(spent)} tokens na conversa`].filter(Boolean).join(" · ");
+  $("chSub").textContent = [chat.room && `sala com ${chat.room.map(targetName).join(", ")}`, chat.worktree && `cópia isolada de ${base(chat.worktree.main)}, branch ${chat.worktree.branch}`, chat.by && "aberta por um agente", !chat.room && !chat.native && chat.messages.length > 2 && "próxima resposta leva o histórico", spent && `${tok(spent)} tokens na conversa`].filter(Boolean).join(" · ");
   const accHtml = `${rosto(a?.provider || (chat.target || "").replace(/^pool:/, ""), "pp")}<span>${esc(a ? accName(a) : targetName(chat.target))}</span>`;
   if ($("chAcc").innerHTML !== accHtml) $("chAcc").innerHTML = accHtml;
+  falaNovas();
   const planned = chat.plan && planInfo.id === chat.id;
   const acts = `<button class="link" id="seePlan" title="${chat.plan ? "O plano que o agente mantém em arquivo para esta tarefa" : "Para tarefa longa: o agente escreve um plano em arquivo, marca os passos e continua dele se a conversa for cortada ou trocar de conta"}">${chat.plan ? `Plano${planned && planInfo.total ? ` ${planInfo.done}/${planInfo.total}` : ""}` : "Plano"}</button><button class="link" id="seeDiff" title="O que mudou nos arquivos desta pasta">Mudanças</button>` + (chat.working ? "" : `<button class="link" id="askReview" title="Uma conta de outro provedor lê o que mudou, sem editar nada, e aponta defeitos">Revisar</button><button class="link" id="askSec" title="Outra conta audita a segurança: por onde entra dado de fora, onde ele chega e o que dá para explorar. Sem mudança pendente, audita o projeto inteiro.">Segurança</button>`) + (chat.worktree && !chat.working ? `<button class="link" id="mkPr" title="Pede ao agente para fazer commit, push e abrir o PR. Com o PR aberto e nada pendente, a cópia some sozinha.">Criar PR</button>` : "");
   if ($("chActs").innerHTML !== acts) $("chActs").innerHTML = acts;

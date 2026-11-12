@@ -801,6 +801,26 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`attached = []; paintAtts();`);
   }, SLOW);
 
+  test("sala: vários agentes escolhidos conversam na mesma conversa, e dá para voltar ao paralelo; a voz liga e limpa o texto que lê", async () => {
+    const dois = await page(`const outro = (await api("accounts", "POST", { provider: "codex", label: "da-sala" })).id; await refresh(); go({ type: "home" }); sala = true; // a conta padrão do Codex de mentira vive no limite
+      picked.clear(); ["claude-padrao", outro].forEach((t) => picked.add(t)); store.set("targets", JSON.stringify([...picked])); paintComposer(); return outro;`);
+    const campo = await page(`const le = () => [document.querySelector("#salaChip").style.display, document.querySelector("#salaChip").innerText.trim(), document.querySelector("#targetChip").innerText.trim()];
+      const ligada = le(); document.querySelector("#salaChip").click(); const paralelo = le(); document.querySelector("#salaChip").click(); return { ligada, paralelo, voltou: le()[2] };`);
+    expect(campo).toEqual({ ligada: ["inline-flex", "Sala: conversam entre si", "Sala com 2 agentes"], paralelo: ["inline-flex", "Em paralelo: cada um sozinho", "2 contas em paralelo"], voltou: "Sala com 2 agentes" });
+    // em "pergunta antes" o Claude de mentira para pedindo permissão; aqui interessa a conversa
+    await page(`window.__modo = mode; setMode("edit"); document.querySelector("#prompt").value = "conversem"; document.querySelector("#send").click();`);
+    await until(`view.type === "chat" && chat && chat.room && !chat.working && chat.messages.length >= 3`);
+    const conversa = await page(`return { sala: chat.room, falas: chat.messages.filter((m) => m.role === "assistant").map((m) => [m.accountId, m.state]), nomes: [...document.querySelectorAll("#msgs .m:not(.user) .who b")].map((b) => b.textContent),
+      sub: document.querySelector("#chSub").textContent.startsWith("sala com Claude"), rodape: document.querySelector("#targetChip").innerText.trim(), modelo: document.querySelector("#modelChip").style.display };`);
+    expect(conversa).toEqual({ sala: ["claude-padrao", dois], falas: [["claude-padrao", "done"], [dois, "done"]], nomes: ["Claude", "Codex"], sub: true, rodape: "Sala · 2 agentes", modelo: "none" });
+    // voz: o botão liga e desliga, e o texto lido sai sem código, marcação nem endereço
+    const vozes = await page(`const antes = document.querySelector("#vozBtn").getAttribute("aria-pressed"); document.querySelector("#vozBtn").click(); const ligada = document.querySelector("#vozBtn").getAttribute("aria-pressed");
+      document.querySelector("#vozBtn").click(); calaVoz();
+      return { antes, ligada, depois: document.querySelector("#vozBtn").getAttribute("aria-pressed"), limpo: paraOuvir(${JSON.stringify("**Pronto**: rodei `bun test`.\n\n```js\nconst a = 1;\n```\n- veja https://exemplo.dev/x")}) };`);
+    expect(vozes).toEqual({ antes: "false", ligada: "true", depois: "false", limpo: "Pronto: rodei bun test. Trecho de código. veja link" });
+    await page(`setMode(window.__modo); picked.clear(); store.set("targets", "[]"); go({ type: "home" }); paintComposer();`);
+  }, SLOW);
+
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {
     await page(`go({ type: "home" });`);
     const campo = await page(`const c = document.querySelector("#v-home canvas.campo"), v = document.querySelector("#v-home");
