@@ -532,7 +532,8 @@ describe.skipIf(!CHROME)("tela", () => {
       salas: [...document.querySelectorAll("#threads > .item[data-open]")].map((b) => b.dataset.open), first: all.slice(0, 8).map((t) => t.type + ":" + t.id), more: !!document.querySelector('#threads [data-more="salas"]'),
       hash: !!document.querySelector("#threads > .item[data-open] svg.i"), dirs: [...document.querySelectorAll("#threads .org-cab [data-dir]")].map((b) => [b.dataset.dir, b.getAttribute("aria-expanded")]), nav: [...document.querySelectorAll("aside .nav .item")].filter((b) => b.getBoundingClientRect().height).map((b) => b.querySelector(".t").textContent) };`);
     expect(side.groups).toEqual(["Salas", "Projetos"]);
-    expect(side.nav).toEqual(["Precisa de você", "Rotinas", "Tarefas"]);
+    expect(side.nav).toEqual(["Nova sala", "Precisa de você", "Rotinas", "Tarefas"]); // começar uma sala é a primeira linha, por extenso
+    expect(await page(`const b = document.querySelector("aside .item.nova-sala"); go({ type: "accounts" }); b.click(); return [view.type, b.innerText.replace(/\\s+/g, " ").trim(), !!document.querySelector('aside .lat-topo [data-go="home"]')]`)).toEqual(["home", "Nova sala ⌘N", false]);
     expect(side.total).toBeGreaterThan(8);          // os testes de cima já abriram mais conversas do que cabem
     expect(side.salas).toEqual(side.first);         // as oito mais recentes, na ordem
     expect([side.more, side.hash]).toEqual([true, true]);
@@ -561,7 +562,7 @@ describe.skipIf(!CHROME)("tela", () => {
     const estado = await env.api("state"), accounts = estado.accounts;
     const instalados = new Set(estado.providers.filter((p: any) => p.installed).map((p: any) => p.id));
     expect(bots.map((b: string[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider)).map((a: any) => a.id));
-    expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", accounts.find((a: any) => a.id === "claude-padrao").label, true, "uso"]);
+    expect(bots.find((b: string[]) => b[0] === "claude-padrao")).toEqual(["claude-padrao", "Claude", "teste@exemplo.dev", true, "uso"]); // a conta da máquina aparece pelo e-mail do login, não como "padrão desta máquina"
     expect(bots.filter((b: any[]) => b[4] === "Entrar").map((b: any[]) => b[0])).toEqual(accounts.filter((a: any) => instalados.has(a.provider) && !a.status.ok).map((a: any) => a.id));
     await page(`document.querySelector('#bots [data-acc="claude-padrao"]').click();`);
     await until(`document.querySelector('#accList .conta.foco')`);
@@ -662,7 +663,10 @@ describe.skipIf(!CHROME)("tela", () => {
     await env.idle(id);
     await page(`await refresh(); go({ type: "chat", id: "${id}" });`);
     await until(`chat && chat.id === "${id}" && !chat.working && document.querySelector("#msgs .acts .cnt")`);
-    const label = (await env.api("state")).accounts.find((a: any) => a.id === "claude-padrao").label;
+    const label = "teste@exemplo.dev"; // a conta da máquina aparece pelo e-mail do login
+    expect((await env.api("state")).accounts.find((a: any) => a.id === "claude-padrao").label).toBe("padrão desta máquina");
+    expect(await page(`return [rot({ id: "codex-padrao", provider: "codex", label: "padrão desta máquina", status: { detail: "ChatGPT" } }), rot({ id: "claude-ab12", provider: "claude", label: "dev-1", status: { detail: "Team · a@b.dev" } }), motivoDoLimite('ing#prepay. ","status":"RESOURCE_EXHAUSTED"}}'), motivoDoLimite("You've hit your usage limit. Try again in 2 hours."), motivoDoLimite('{"x":1}'), detalheDaConta({ id: "claude-padrao", provider: "claude", status: { detail: "Max · teste@exemplo.dev" } })]`))
+      .toEqual(["desta máquina", "dev-1", "a cota ou o crédito desta conta acabou no provedor", "limite de uso da conta", "", "Max · login desta máquina"]);
     const room = await page(`const ms = [...document.querySelectorAll("#msgs > .m")], bot = ms.at(-1), me = ms[0];
       return { title: document.querySelector("#chTitle").textContent === chat.title, dir: document.querySelector("#chDir").innerText.trim(), tabs: [...document.querySelectorAll("#v-chat .abas button")].map((b) => [b.textContent, b.getAttribute("aria-current")]),
         acc: document.querySelector("#chAcc").innerText.trim(), acts: [...document.querySelectorAll("#chActs button")].map((b) => b.textContent),
@@ -756,7 +760,11 @@ describe.skipIf(!CHROME)("tela", () => {
   test("apps conectados: instalar do catálogo, entrar, instalar um endereço colado e remover, tudo pela janela", async () => {
     await page(`go({ type: "home" }); window.confirm = () => true; document.querySelector("#appsPill").click();`);
     await until(`document.querySelector("#appsDlg").open && document.querySelector('#appsBody [data-app-poe="linear"]')`);
-    const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Adicionar app") && b.innerText.includes("Outro endereço"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
+    // a janela abre em Conectados; o catálogo fica na aba Adicionar, e instalar algo volta para Conectados
+    const adicionarAba = () => page(`document.querySelector('#appsBody [data-apps-aba="adicionar"]').click();`);
+    expect(await page(`return [...document.querySelectorAll("#appsBody .apps-abas [role=tab]")].map((b) => [b.innerText.replace(/\\s+/g, " ").trim(), b.getAttribute("aria-selected")])`)).toEqual([["Conectados 0", "true"], ["Adicionar", "false"]]);
+    await adicionarAba();
+    const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Outro endereço") && !b.innerText.includes("Usar nas outras contas"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
     expect({ ...inicio, catalogo: inicio.catalogo.length >= 25 && ["linear", "notion", "figma", "cloudflare", "atlassian", "trello"].every((x) => inicio.catalogo.includes(x)) }).toEqual({ secao: true, catalogo: true, marca: true, agentes: ["Claude:true", "Codex:true"], larga: false });
     // categoria e busca filtram o catálogo; a busca também consulta o registro público (aqui, o de mentira)
     await page(`document.querySelector('#appsBody [data-app-area="design"]').click();`);
@@ -770,6 +778,8 @@ describe.skipIf(!CHROME)("tela", () => {
     expect(await page(`return [document.querySelector('#appsBody [data-app="planilhas"] .app-n').innerText.replace(/\\s+/g, " "), document.querySelector("#toast").textContent]`)).toEqual(["planilhas mcp.exemplo.dev", "planilhas instalado no Claude e no Codex."]);
     await page(`document.querySelector('#appsBody [data-app-tira="planilhas"]').click();`);
     await until(`!document.querySelector('#appsBody [data-app="planilhas"]')`);
+    expect(await page(`return document.querySelector('#appsBody [data-apps-aba="conectados"]').getAttribute("aria-selected")`)).toBe("true");
+    await adicionarAba();
     await page(`const q = document.querySelector("#appBusca"); q.value = "git"; q.dispatchEvent(new InputEvent("input", { bubbles: true }));`);
     // app que pede chave: o cartão abre o campo, e sem chave o servidor recusa com a frase
     await page(`document.querySelector('#appsBody [data-app-chave="github"]').click();`);

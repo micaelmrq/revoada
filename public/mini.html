@@ -136,7 +136,9 @@ const dur = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 6
 const left = (ms) => { const m = Math.max(0, Math.ceil(ms / 60000)); return m < 60 ? `${m}min` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`; };
 const acc = (id) => S.accounts.find((a) => a.id === id);
 const prov = (id) => S.providers.find((p) => p.id === id);
-const accName = (a) => (a ? `${prov(a.provider).name} · ${a.label}` : "conta removida");
+// a conta do login da máquina aparece pelo e-mail, não como "padrão desta máquina" (igual em todo provedor)
+const rot = (a) => (a.id !== `${a.provider}-padrao` ? a.label : a.status?.detail?.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0] || "desta máquina");
+const accName = (a) => (a ? `${prov(a.provider).name} · ${rot(a)}` : "conta removida");
 const base = (p) => p.split("/").filter(Boolean).pop() || "/";
 const ready = (a) => a.status.ok && !a.limit;
 
@@ -166,10 +168,10 @@ function render() {
   if (render.now !== now) $("now").innerHTML = render.now = now;
 
   const accs = S.providers.filter((p) => p.installed).map((p) => `<div class="prov"><span>${p.name}</span><div class="pills">${S.accounts.filter((a) => a.provider === p.id).map((a) => {
-    if (a.limit) return `<button class="pill lim" data-open="go({type:'accounts'})" aria-label="${esc(a.label)}, ${esc(a.limit.reason)}"><i></i><span>${esc(a.label)}</span><em class="num" data-left="${a.limit.until}"></em><b class="bar" data-from="${a.limit.at}" data-to="${a.limit.until}"></b></button>`;
-    if (!a.status.ok) return `<button class="pill off" data-open="go({type:'accounts'})"><i></i><span>${esc(a.label)} · sem login</span></button>`;
+    if (a.limit) return `<button class="pill lim" data-open="go({type:'accounts'})" aria-label="${esc(rot(a))}, ${esc(a.limit.reason)}"><i></i><span>${esc(rot(a))}</span><em class="num" data-left="${a.limit.until}"></em><b class="bar" data-from="${a.limit.at}" data-to="${a.limit.until}"></b></button>`;
+    if (!a.status.ok) return `<button class="pill off" data-open="go({type:'accounts'})"><i></i><span>${esc(rot(a))} · sem login</span></button>`;
     const top = Math.max(0, ...(a.usage || []).map((u) => u.pct)), note = (a.usage || []).map((u) => `${{ five_hour: "5h", seven_day: "7 dias" }[u.key] || u.key}: ${u.pct}%`).join(" · ");
-    return `<button class="pill ${inUse.has(a.id) ? "use" : "ok"}" data-open="go({type:'accounts'})" aria-label="${esc(a.label)}, ${inUse.has(a.id) ? "em uso" : "pronta"}${note ? ", " + note : ""}"><i></i><span>${esc(a.label)}</span>${a.usage?.length ? `<em class="num">${top}%</em><b class="bar ${top >= 95 ? "red" : top >= 75 ? "amber" : ""}" style="width:${top}%"></b>` : ""}</button>`;
+    return `<button class="pill ${inUse.has(a.id) ? "use" : "ok"}" data-open="go({type:'accounts'})" aria-label="${esc(rot(a))}, ${inUse.has(a.id) ? "em uso" : "pronta"}${note ? ", " + note : ""}"><i></i><span>${esc(rot(a))}</span>${a.usage?.length ? `<em class="num">${top}%</em><b class="bar ${top >= 95 ? "red" : top >= 75 ? "amber" : ""}" style="width:${top}%"></b>` : ""}</button>`;
   }).join("")}</div></div>`).join("");
   if (render.accs !== accs) $("accounts").innerHTML = render.accs = accs;
 

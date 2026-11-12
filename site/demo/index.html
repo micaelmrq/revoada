@@ -104,6 +104,9 @@
   .find:focus-within { box-shadow: inset 0 0 0 1px var(--fio2); color: var(--tinta); }
   .find input { flex: 1; min-width: 0; border: 0; background: none; padding: 0; outline: none; font-size: 14px; }
   kbd { font: 11px var(--mono); color: var(--tinta3); }
+  /* começar uma sala é a primeira linha da lateral, por extenso: antes era só um ícone no canto */
+  .item.nova-sala { color: var(--tinta); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fio2); margin-bottom: 8px; min-height: 34px; }
+  .item.nova-sala:hover { background: var(--sup); } .item.nova-sala.on { background: var(--sup); }
   .rolagem { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 14px; }
   .item { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 5px 8px; border-radius: 8px; color: var(--tinta2); min-width: 0; font-size: 14px; transition: background .1s ease; }
   .item:hover { background: var(--sup); color: var(--tinta); }
@@ -197,7 +200,15 @@
   #planDlg { width: min(720px, 92vw); max-height: 86vh; padding: 0; display: none; flex-direction: column; } #planDlg[open] { display: flex; }
   #planBody { padding: 18px 22px 22px; overflow-y: auto; }
   #phoneDlg { width: min(560px, 92vw); } #phoneBody { display: grid; gap: 6px; padding-top: 12px; }
-  #appsDlg { width: min(760px, 94vw); max-height: 86vh; overflow-y: auto; } #appsBody { padding-top: 14px; }
+  #appsDlg { width: min(760px, 94vw); height: min(720px, 86vh); max-height: 86vh; overflow-y: auto; } #appsBody { padding-top: 6px; }
+  .apps-p[hidden] { display: none; }
+  .apps-abas { display: flex; gap: 22px; border-bottom: 1px solid var(--fio); margin-bottom: 16px; position: sticky; top: 0; background: var(--fundo); z-index: 1; }
+  .apps-abas button { padding: 10px 0 11px; color: var(--tinta3); font-size: 14px; display: inline-flex; align-items: center; gap: 7px; box-shadow: inset 0 -1.5px 0 transparent; transition: color .12s ease; }
+  .apps-abas button:hover { color: var(--tinta); } .apps-abas button[aria-selected="true"] { color: var(--tinta); box-shadow: inset 0 -1.5px 0 var(--tinta); }
+  .apps-abas .num { font-size: 12px; color: var(--tinta3); font-variant-numeric: tabular-nums; }
+  /* conectados em duas colunas: vinte e tantos apps cabem numa tela sem rolar */
+  .apps-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+  @media (max-width: 700px) { .apps-l { grid-template-columns: minmax(0, 1fr); } }
   .apps-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
   .app-c { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio2); min-width: 0; }
   .selo.de-app svg { width: 58%; height: 58%; fill: currentColor; display: block; }
@@ -238,6 +249,7 @@
   .seg { display: inline-flex; background: var(--sup); border-radius: 10px; padding: 3px; }
   .seg button { padding: 5px 13px; border-radius: 8px; color: var(--tinta2); font-size: 13px; }
   .seg button.on { background: var(--sup2); color: var(--tinta); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fio2); }
+  #dica { position: fixed; z-index: 30; pointer-events: none; background: var(--sup2); color: var(--tinta); box-shadow: 0 0 0 1px var(--fio2), 0 6px 18px rgba(0, 0, 0, .35); padding: 5px 9px; border-radius: 7px; font-size: 12.5px; line-height: 1.4; max-width: 280px; white-space: pre-line; }
   #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--botao); color: var(--sobre-botao); padding: 10px 18px; border-radius: 999px; display: none; font-size: 13.5px; z-index: 9; max-width: 80vw; }
 
   /* palco */
@@ -529,6 +541,16 @@
   .toggle { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--fio); width: 100%; }
   .toggle .switch { color: var(--tinta); }
   .toggle small { color: var(--tinta3); margin-left: auto; font-size: 12.5px; text-align: right; }
+  /* skills e MCP: nome e explicação à esquerda, peças no meio, ação à direita */
+  .ferr { display: grid; grid-template-columns: 220px minmax(0, 1fr) auto; gap: 8px 24px; align-items: start; padding: 16px 2px; border-bottom: 1px solid var(--fio); }
+  .ferr-n b { display: block; font-weight: 500; } .ferr-n small { display: block; color: var(--tinta3); font-size: 12.5px; line-height: 1.45; margin-top: 3px; text-wrap: pretty; }
+  .ferr-c { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .ferr-a { padding-top: 3px; }
+  .peca { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px 0 4px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--fio2); font-size: 13px; color: var(--tinta); max-width: 100%; }
+  .peca .selo { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; } .peca .selo svg { width: 12px; height: 12px; }
+  .peca b.num { font-weight: 500; color: var(--tinta2); font-variant-numeric: tabular-nums; }
+  .ferr .resumo { color: var(--tinta2); font-size: 13.5px; } .ferr .vazio-l { color: var(--tinta3); font-size: 13.5px; }
+  @media (max-width: 860px) { .ferr { grid-template-columns: minmax(0, 1fr); } }
   .stats { display: flex; gap: 36px; flex-wrap: wrap; padding: 18px 2px; border-bottom: 1px solid var(--fio); border-top: 1px solid var(--fio); }
   .stats .v { font-size: 22px; font-weight: 500; letter-spacing: -.02em; margin-top: 4px; }
   .hit { padding: 13px 2px; border-bottom: 1px solid var(--fio); }
@@ -561,7 +583,7 @@
   .prov-cab .rodizio { margin-left: auto; color: var(--tinta3); font-size: 13px; display: flex; align-items: center; gap: 6px; }
   .conta { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(250px, 1.8fr) auto; gap: 18px; align-items: center; padding: 13px 2px; border-bottom: 1px solid var(--fio); scroll-margin: 80px; }
   .conta.foco { background: var(--sup); border-radius: 10px; border-bottom-color: transparent; padding-left: 10px; padding-right: 10px; margin: 0 -8px; }
-  .conta .n { min-width: 0; } .conta .n b { font-weight: 500; overflow-wrap: anywhere; } .conta .n div { color: var(--tinta3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conta .n { min-width: 0; } .conta .n b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .conta .como.quieto { color: var(--tinta3); font-size: 13px; } .conta .n div { color: var(--tinta3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conta .lim { color: var(--ambar); }
   .conta .como { color: var(--tinta3); font-size: 13px; }
   .conta .acao { justify-self: end; display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
@@ -629,11 +651,11 @@
 <body>
 <aside>
   <div class="lat-topo"><div class="marca"><span data-logo></span>revoada</div>
-    <button class="ic-b" id="findBtn" data-ic="busca" title="Buscar conversas (⌘K)" aria-label="Buscar conversas"></button>
-    <button class="ic-b" data-go="home" data-ic="nova" title="Novo chat (⌘N)" aria-label="Novo chat"></button></div>
+    <button class="ic-b" id="findBtn" data-ic="busca" title="Buscar conversas (⌘K)" aria-label="Buscar conversas"></button></div>
   <label class="find" data-ic="busca"><input id="tq" placeholder="Buscar conversas" autocomplete="off" spellcheck="false" aria-label="Buscar conversas"><kbd>esc</kbd></label>
   <div class="rolagem">
     <div class="nav">
+      <button class="item nova-sala" data-go="home" data-ic="nova"><span class="t">Nova sala</span><span class="cauda"><kbd>⌘N</kbd></span></button>
       <button class="item atencao" data-go="need" data-ic="sino"><span class="t">Precisa de você</span><span class="cauda"><span class="conta-n num" id="needCount" hidden></span></span></button>
       <button class="item" data-go="sched" data-ic="ciclo"><span class="t">Rotinas</span><span class="cauda"><span class="num" id="schedCount"></span></span></button>
       <button class="item" data-go="board" data-ic="tarefas"><span class="t">Tarefas</span><span class="cauda"><span class="num" id="boardCount"></span></span></button>
@@ -665,7 +687,7 @@
       <h1>O que vamos fazer em <button id="heroDir"></button>?</h1>
       <p id="heroSub"></p>
       <div class="cartoes" id="heroCards">
-        <button data-hero="target" data-ic="arroba"><b>Escolher quem responde</b><span>Uma conta, o rodízio ou várias em paralelo</span></button>
+        <button data-hero="target" data-ic="arroba"><b>Escolher quem responde</b><span>Um agente, ou vários numa sala conversando entre si</span></button>
         <button data-hero="dir" data-ic="pasta"><b>Trocar de projeto</b><span>A pasta em que o agente trabalha</span></button>
         <button data-hero="board" data-ic="tarefas"><b>Despejar tarefas</b><span>Uma por linha, cada uma com o seu agente</span></button>
       </div>
@@ -819,6 +841,7 @@
 <dialog id="phoneDlg"><header><div><h2>Acompanhar pelo celular</h2><small>Uma página leve, em outro aparelho, com o que os agentes estão fazendo.</small></div><button class="ic-b" id="phoneClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="phoneBody"></div></dialog>
 <dialog id="appsDlg"><header><div><h2>Apps conectados</h2><small>Skills e servidores MCP da conta padrão de cada provedor, e o que as outras contas recebem.</small></div><button class="ic-b" id="appsClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="appsBody"></div></dialog>
 <div id="toast" role="status"></div>
+<div id="dica" role="tooltip" hidden></div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -908,7 +931,11 @@ async function api(path, method = "GET", body) {
 }
 const acc = (id) => S.accounts.find((a) => a.id === id);
 const prov = (id) => S.providers.find((p) => p.id === id);
-const accName = (a) => (a ? `${prov(a.provider).name} · ${a.label}` : "conta removida");
+// Nome que a tela mostra. A conta que usa o login que já existe na máquina é guardada como "padrão desta máquina" em todo
+// provedor; quatro linhas com o mesmo nome não dizem nada, então ela aparece pelo e-mail do login, ou como "desta máquina".
+const ehDaMaquina = (a) => !!a && a.id === `${a.provider}-padrao`;
+const rot = (a) => (!ehDaMaquina(a) ? a.label : a.status?.detail?.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0] || "desta máquina");
+const accName = (a) => (a ? `${prov(a.provider).name} · ${rot(a)}` : "conta removida");
 const ready = (a) => a.status.ok && !a.limit;
 const short = (p) => p.replace(S.home, "~");
 const base = (p) => p.split("/").filter(Boolean).pop() || "/";
@@ -1127,8 +1154,8 @@ function renderThreads() {
     const side = sideThreads(all);
     // Salas: as conversas, da mais recente para a mais antiga
     const SHOWN = 8, wide = expanded.has("salas");
-    html = `<div class="grupo">Salas<button data-go-home title="Novo chat" aria-label="Novo chat">${ic("mais")}</button></div>`
-      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma conversa ainda</button>`)
+    html = `<div class="grupo">Salas</div>` // quem começa uma sala é o botão do topo (⌘N); um segundo + aqui fazia a mesma coisa com outro nome
+      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma sala ainda. Comece em Nova sala.</button>`)
       + (side.length > SHOWN ? `<button class="item more" data-more="salas">${wide ? "Mostrar menos" : "Mostrar mais"}</button>` : "");
     const shelved = archivedThreads(all), showShelved = expanded.has("arquivadas");
     if (shelved.length) html += `<button class="item more" data-more="arquivadas">${showShelved ? "Esconder arquivadas" : `Arquivadas ${shelved.length}`}</button>` + (showShelved ? shelved.map((t) => threadRow(t, "")).join("") : "");
@@ -1147,7 +1174,7 @@ function renderThreads() {
       const real = dir !== LOOSE && !dir.startsWith(COPIES);
       const open = openDirs.has(dir), more = expanded.has(dir), shown = more ? list : list.slice(0, 5), name = dir === LOOSE ? "Avulsas" : dir.startsWith(COPIES) ? dir.slice(COPIES.length) : base(dir);
       html += `<div class="org-cab ${dir === here ? "on" : ""}"><button data-dir="${esc(dir)}" aria-expanded="${open}" title="${esc(real ? dir : name)}${dir === cwd() ? "\nPasta de trabalho do campo de pedido" : ""}"><span class="chev">${ic("seta")}</span><span class="sigla">${esc(name[0] || "/")}</span><span class="t">${esc(name)}</span>${open || !list.length ? "" : `<span class="qtd num">${list.length}</span>`}</button>
-          ${real ? `<button class="mais" data-newin="${esc(dir)}" title="Novo chat em ${esc(name)}" aria-label="Novo chat em ${esc(name)}">${ic("mais")}</button>` : ""}</div>`
+          ${real ? `<button class="mais" data-newin="${esc(dir)}" title="Nova sala em ${esc(name)}" aria-label="Nova sala em ${esc(name)}">${ic("mais")}</button>` : ""}</div>`
         + (open ? (shown.map((t) => threadRow(t, "thread")).join("") || `<button class="item thread more" data-newin="${esc(dir)}">Nenhuma conversa aqui ainda</button>`)
           + (list.length > 5 ? `<button class="item thread more" data-more="${esc(dir)}">${more ? "Mostrar menos" : "Mostrar mais"}</button>` : "") : "");
     }
@@ -1248,7 +1275,7 @@ function renderBots() {
     const p = prov(a.provider), u = worstUse(a), on = view.type === "accounts" && view.focus === a.id;
     const state = !a.status.ok ? "Sem login" : a.limit ? `No limite até ${hm(a.limit.until)}` : busy.has(a.id) ? "Trabalhando" : "Livre";
     return `<button class="item botl ${on ? "on" : ""}" data-acc="${esc(a.id)}" title="${esc(accName(a))} · ${state}${a.status.ok && a.usage?.length ? ` · ${u}% do limite da conta` : ""}">
-      <span class="com-pres">${rosto(a.provider, "p")}<span class="pres ${!a.status.ok ? "" : a.limit ? "limite" : busy.has(a.id) ? "faz" : "livre"}"></span></span><span class="t">${esc(p.name)}</span><span class="tag">${esc(a.label)}</span>
+      <span class="com-pres">${rosto(a.provider, "p")}<span class="pres ${!a.status.ok ? "" : a.limit ? "limite" : busy.has(a.id) ? "faz" : "livre"}"></span></span><span class="t">${esc(p.name)}</span><span class="tag">${esc(rot(a))}</span>
       <span class="cauda">${!a.status.ok ? `<span class="entrar">Entrar</span>` : `${u >= 85 ? `<span class="pct num">${u}%</span>` : ""}<span class="uso-m ${u >= 85 ? "alto" : ""}"><i style="width:${Math.max(Math.min(u, 100), 4)}%"></i></span>`}</span></button>`;
   };
   const html = `<div class="grupo">Bots<span class="dupla"><span class="num">${A.filter(ready).length}/${A.length}</span><button data-go-acc title="Contas e limites" aria-label="Contas e limites">${ic("ajustes")}</button><button data-add-acc title="Adicionar conta" aria-label="Adicionar conta">${ic("mais")}</button></span></div>` + A.map(row).join("");
@@ -1351,19 +1378,22 @@ function paintApps(t) {
     + (!achados ? `<div class="calm">Buscando no registro.</div>` : achados.erro ? `<div class="calm">${esc(achados.erro)}</div>`
       : (achados.achados.length ? `<div class="apps-g">${achados.achados.map((a) => `<div class="app-c">${appSelo(a.name)}<span><b title="${esc(a.registro)}">${esc(a.nome)}</b><span title="${esc(a.o_que)}">${esc(a.onde)}${a.o_que ? ` · ${esc(a.o_que)}` : ""}</span></span>${mcp.includes(a.name) ? `<i class="tag mute">instalado</i>` : botao(`data-app-reg="${esc(a.registro)}"`, a.registro, "Instalar")}</div>`).join("")}</div>` : `<div class="calm">Nada instalável com esse nome no registro.</div>`)
         + (achados.fora ? `<small class="app-aviso">${plural(achados.fora, "resultado pede", "resultados pedem")} chave ou configuração própria e ${achados.fora === 1 ? "ficou" : "ficaram"} de fora. Dá para instalar por Outro endereço.</small>` : ""));
-  const adicionar = !t.catalogo ? "" : `<span class="label" style="padding:18px 0 8px">Adicionar app</span>`
+  const adicionar = !t.catalogo ? "" : ``
     + (clis.length ? `<div class="app-busca">${ic("busca")}<input type="text" id="appBusca" placeholder="Buscar app pelo nome" aria-label="Buscar app" autocomplete="off" spellcheck="false"></div>
       <div class="apps-areas"><button class="chip ${appsArea ? "" : "on"}" data-app-area="">Todos</button>${(t.areas || []).map(([id, nome]) => `<button class="chip ${appsArea === id ? "on" : ""}" data-app-area="${id}">${esc(nome)}</button>`).join("")}</div>` : `<div class="calm">Instale o Claude Code ou o Codex para adicionar apps por aqui.</div>`)
     + (clis.length ? (faltam.length ? `<div class="apps-g">${faltam.map(cartao).join("")}</div>` : `<div class="calm">${q ? "Nenhum app do catálogo com esse nome." : "Tudo desta lista já está instalado."}</div>`) + doRegistro : "")
     + (clis.length ? `<div class="app-outro"><span class="label">Outro endereço</span><div class="e-linha"><input type="text" id="appNome" placeholder="nome-do-app" aria-label="Nome do app" autocomplete="off" spellcheck="false"><input type="text" id="appEndereco" placeholder="Endereço https do servidor MCP, ou o comando que o inicia" aria-label="Endereço ou comando" autocomplete="off" spellcheck="false">${botao("data-app-outro", "outro", "Instalar")}</div>
       ${clis.length > 1 ? `<div class="apps-em"><span>Instalar em</span>${clis.map((p) => `<button class="chip ${appsEm.has(p) ? "on" : ""}" data-app-em="${p}" aria-pressed="${appsEm.has(p)}">${appsEm.has(p) ? ic("certo") : ""}${CLI_NOME[p]}</button>`).join("")}</div>` : ""}
       <small>O app entra na conta padrão, pelo comando oficial de cada agente. Servidor com login próprio abre o navegador para você entrar. Nas outras contas ele vai junto quando a chave abaixo está ligada, e cada conta pede o próprio login na primeira conversa.</small></div>` : "");
-  $("appsBody").innerHTML = `<span class="label" style="padding-bottom:8px">Servidores MCP</span>`
-    + (mcp.length ? `<div class="apps-l">${mcp.map(linha).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
-    + adicionar
+  // duas abas: o que já está conectado e o que dá para adicionar. Com muitos apps, uma lista só empurrava o "Adicionar" para o fim da rolagem
+  const aba = adicionar && appsAba === "adicionar" ? "adicionar" : "conectados";
+  const abas = adicionar ? `<div class="apps-abas" role="tablist"><button role="tab" aria-selected="${aba === "conectados"}" data-apps-aba="conectados">Conectados<span class="num">${mcp.length}</span></button><button role="tab" aria-selected="${aba === "adicionar"}" data-apps-aba="adicionar">Adicionar</button></div>` : "";
+  // as duas abas ficam na página e só uma aparece: o que foi digitado na outra não se perde
+  $("appsBody").innerHTML = abas + (adicionar ? `<div class="apps-p" ${aba === "adicionar" ? "" : "hidden"}>${adicionar}</div>` : "") + (`<div class="apps-p" ${aba === "conectados" ? "" : "hidden"}><span class="label" style="padding-bottom:8px">Servidores MCP</span>`
+    + (mcp.length ? `<div class="apps-l">${mcp.map(linha).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta da máquina.${adicionar ? ` <button class="link" data-apps-aba="adicionar">Adicionar um app</button>` : ""}</div>`)
     + `<span class="label" style="padding:18px 0 8px">Skills</span><div class="calm">${Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${esc(prov(p)?.name || p)}: ${n}`).join(" · ") || "Nenhuma skill instalada na conta padrão."}</div>`
-    + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button></div>`
-    + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div>`;
+    + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta da máquina</button></div>`
+    + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div></div>`);
   for (const [id, valor, foco] of digitado) if ($(id)) { $(id).value = id === "appBusca" ? appsBusca : valor; if (foco) $(id).focus(); }
 }
 // a busca filtra o catálogo na hora e, um instante depois de parar de digitar, consulta o registro público
@@ -1396,6 +1426,7 @@ async function appsInstala(body, marca, nome) {
   appsOcupado = "";
   if (!r) return paintApps(toolsInfo);
   const ok = Object.keys(r.results).filter((p) => r.results[p].ok), ruim = Object.values(r.results).filter((x) => !x.ok).map((x) => x.erro);
+  if (ok.length) appsAba = "conectados"; // instalou: mostra o app na lista, com o botão de entrar quando precisa
   toast([`${nome || r.name} instalado ${noCli(ok)}.`, ok.some((p) => r.results[p].login) ? "O navegador abriu para o login." : "", ...ruim].filter(Boolean).join(" "));
   if (marca === "outro") for (const id of ["appNome", "appEndereco"]) $(id).value = "";
   if (marca === appsChave) { appsChave = ""; if ($("appChave")) $("appChave").value = ""; }
@@ -1411,7 +1442,10 @@ $("appsBody").onkeydown = (e) => {
 };
 // com acento em composição (til, agudo) a repintura trocaria o campo no meio da letra: espera a letra fechar
 $("appsBody").oninput = $("appsBody").oncompositionend = (e) => { if (e.target.id !== "appBusca" || e.isComposing) return; appsBusca = e.target.value; paintApps(toolsInfo); appsProcura(); };
+let appsAba = "conectados"; // aba aberta na janela de apps
 $("appsBody").onclick = async (e) => {
+  const troca = e.target.closest("[data-apps-aba]");
+  if (troca) { appsAba = troca.dataset.appsAba; paintApps(toolsInfo); if (appsAba === "adicionar") $("appBusca")?.focus(); return; }
   const b = e.target.closest("button"); if (!b) return;
   const d = b.dataset;
   if ("appsAcc" in d) { $("appsDlg").close(); return go({ type: "accounts", tools: true }); }
@@ -1606,7 +1640,10 @@ function paintComposer() {
   $("salaChip").innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v4a2.5 2.5 0 0 1-2.5 2.5H9l-3.5 3v-3A2.5 2.5 0 0 1 4 10.5z"/><path d="M19 9.5a2.5 2.5 0 0 1 1.5 2.3v3.7a2.5 2.5 0 0 1-2 2.45V20l-3-2h-4"/></svg><span class="lb">${sala ? "Sala: conversam entre si" : "Em paralelo: cada um sozinho"}</span>`;
   $("salaChip").classList.toggle("on", sala);
   $("targetChip").innerHTML = `<span class="lb">${esc(who)}</span>${ICON.down}`; $("targetChip").title = who;
-  $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro</span>`; $("brainChip").classList.toggle("on", useBrain);
+  // quantas notas do cérebro acompanham o pedido que está sendo escrito: só o número no botão, os nomes ficam na dica
+  const notasDoPedido = useBrain ? peek.notas || [] : [];
+  $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro${notasDoPedido.length ? ` · ${notasDoPedido.length}` : ""}</span>`; $("brainChip").classList.toggle("on", useBrain);
+  $("brainChip").title = !useBrain ? "Cérebro desligado para este pedido. Clique para ligar." : notasDoPedido.length ? `${plural(notasDoPedido.length, "nota vai", "notas vão")} junto com este pedido:\n${notasDoPedido.join("\n")}` : "Entrega as notas relevantes do cérebro como contexto do pedido";
   $("modeChip").innerHTML = `${ICON.edit}<span class="lb">${MODES[mode]}</span>`; $("modeChip").classList.toggle("on", mode !== "read"); $("modeChip").title = MODE_HINT[mode] + " Clique para trocar.";
   $("attChip").style.display = "inline-flex"; // anexo vale em todo modo: numa conta vai como imagem, em paralelo e no terminal vai o caminho do arquivo
   if (!inChat && repo.cwd !== cwd()) { repo = { cwd: cwd(), repo: false, busy: false }; api("repo?cwd=" + encodeURIComponent(cwd())).then((r) => { if (repo.cwd === cwd()) { repo = { cwd: cwd(), ...r }; paintComposer(); } }).catch(() => {}); }
@@ -1852,6 +1889,29 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault(); b.click();
 });
 
+// ---------- dicas ----------
+// A dica nativa (atributo title) aparece longe do botão dentro do app de Mac. Esta guarda o texto, tira o title e mostra a
+// dica colada ao elemento, depois de uma pausa. O nome acessível continua no aria-label de cada botão.
+(() => {
+  const el = $("dica"); let espera = 0, dono = null;
+  const some = () => { clearTimeout(espera); el.hidden = true; dono = null; };
+  const mostra = (alvo) => {
+    const texto = alvo.dataset.dica; if (!texto || !alvo.isConnected) return;
+    el.textContent = texto; el.hidden = false;
+    const r = alvo.getBoundingClientRect(), d = el.getBoundingClientRect(), embaixo = r.bottom + 8 + d.height < innerHeight;
+    el.style.left = Math.round(Math.max(8, Math.min(innerWidth - d.width - 8, r.left + r.width / 2 - d.width / 2))) + "px";
+    el.style.top = Math.round(embaixo ? r.bottom + 8 : r.top - d.height - 8) + "px";
+  };
+  document.addEventListener("mouseover", (e) => {
+    const alvo = e.target.closest?.("[title], [data-dica]"); if (alvo === dono) return;
+    some(); if (!alvo) return;
+    if (alvo.hasAttribute("title")) { const t = alvo.getAttribute("title"); alvo.removeAttribute("title"); if (t) { alvo.dataset.dica = t; if (!alvo.hasAttribute("aria-label") && !alvo.textContent.trim()) alvo.setAttribute("aria-label", t); } }
+    dono = alvo; espera = setTimeout(() => mostra(alvo), 450);
+  });
+  for (const ev of ["mousedown", "keydown", "scroll", "blur"]) addEventListener(ev, some, true);
+  document.addEventListener("mouseleave", some);
+})();
+
 // ---------- voz ----------
 // Com a voz ligada, cada resposta que termina é lida em voz alta; na sala cada agente tem a sua voz e diz o nome antes.
 // O microfone dita o pedido. Voz ligada e microfone usado viram conversa de mãos livres: você fala, eles respondem
@@ -2091,14 +2151,14 @@ function peek() {
   const q = $("prompt").value.trim();
   // conversa que retoma a sessão do agente não recebe o cérebro de novo: prometer nota aqui seria mentira
   const t = view.type === "chat" && chat?.native ? targets()[0] || "" : "";
-  if (t && (t === chat.native.accountId || t === `pool:${chat.provider}`)) return ($("notes").textContent = "");
-  if (!useBrain || q.length < 8) return ($("notes").textContent = useBrain ? "" : "cérebro desligado");
+  const semNotas = () => { if (peek.notas?.length) { peek.notas = []; paintComposer(); } };
+  if (t && (t === chat.native.accountId || t === `pool:${chat.provider}`)) return semNotas();
+  if (!useBrain || q.length < 8) return semNotas();
   peek.t = setTimeout(async () => {
     const hits = await api(`brain/search?ctx=1&n=4&hint=${encodeURIComponent(base(cwd()))}&q=${encodeURIComponent(q)}`).catch(() => []);
     if ($("prompt").value.trim() !== q) return; // o pedido já foi enviado ou mudou: esta resposta é velha
     const names = [...new Set(hits.map((h) => h.title.split(" › ")[0]))];
-    $("notes").textContent = names.length ? `vai junto do cérebro: ${names.join(", ")}` : "nada do cérebro combina com este pedido";
-    $("notes").title = names.join("\n");
+    peek.notas = names; paintComposer();
   }, 350);
 }
 $("prompt").oninput = () => { const t = $("prompt"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 240) + "px"; peek(); paintSend(); if (view.type === "chat" && chat?.suggest) paintComposer(); };
@@ -2128,7 +2188,7 @@ $("send").onclick = async () => {
   const ts = targets(); if (!ts.length) return toast("Nenhuma conta pronta. Faça login em Contas.");
   const text = $("prompt").value;
   if (attached.some((x) => x.pending)) return toast("Espere o anexo terminar de subir.");
-  const clear = () => { $("prompt").value = ""; $("prompt").style.height = "auto"; $("notes").textContent = ""; attached = []; paintAtts(); };
+  const clear = () => { $("prompt").value = ""; $("prompt").style.height = "auto"; $("notes").textContent = ""; peek.notas = []; attached = []; paintAtts(); };
   if (view.type === "chat") {
     if (!text.trim() && !attached.length) return;
     if (rewriting != null && !chat.working) { const index = rewriting; rewriting = null; await api(`convos/${chat.id}/rewind`, "POST", { index, text }); clear(); return loadChat(true); }
@@ -2209,7 +2269,7 @@ function msgParts(m, i) {
   const same = (ask, it) => (it.kind === "cmd" && it.command === ask.detail) || (it.kind === "files" && it.changes.some((c) => c.path === ask.detail));
   const pending = items.filter((x) => x.kind === "ask" && x.state === "pending");
   const by = acc(m.accountId);
-  const parts = [["av", rosto(by?.provider)], ["who", `<div class="who"><b>${esc(by ? prov(by.provider).name : "conta removida")}</b>${by ? `<span class="tag">${esc(by.label)}</span>` : ""}${m.review ? `<span class="tag ok">${m.reviewKind === "security" ? "Auditoria de segurança" : "Revisão"}</span>` : ""}<time>${hm(m.at)}</time>${m.state === "working" ? "" : `<span class="num">${dur(took)}</span>`}${m.model ? `<span class="mdl" ${m.routed ? `title="Modelo automático: este pedido foi lido como ${m.routed}"` : ""}>${esc(m.model.replace(/^claude-/, "").replace(/\[.*\]$/, ""))}${m.routed ? ` · auto ${m.routed}` : ""}</span>` : ""}${m.tokens ? `<button class="xr num" data-xray="${i}" title="Ver o que pesou nesta resposta">${tok(m.tokens.in + m.tokens.out + m.tokens.cache)} tokens</button>` : ""}${m.brain?.length ? `<span class="b" title="${esc(m.brain.join("\n"))}">${plural(m.brain.length, "nota", "notas")} do cérebro</span>` : ""}${m.state === "stopped" ? "<span>interrompido</span>" : ""}</div>`]];
+  const parts = [["av", rosto(by?.provider)], ["who", `<div class="who"><b>${esc(by ? prov(by.provider).name : "conta removida")}</b>${by ? `<span class="tag">${esc(rot(by))}</span>` : ""}${m.review ? `<span class="tag ok">${m.reviewKind === "security" ? "Auditoria de segurança" : "Revisão"}</span>` : ""}<time>${hm(m.at)}</time>${m.state === "working" ? "" : `<span class="num">${dur(took)}</span>`}${m.model ? `<span class="mdl" ${m.routed ? `title="Modelo automático: este pedido foi lido como ${m.routed}"` : ""}>${esc(m.model.replace(/^claude-/, "").replace(/\[.*\]$/, ""))}${m.routed ? ` · auto ${m.routed}` : ""}</span>` : ""}${m.tokens ? `<button class="xr num" data-xray="${i}" title="Ver o que pesou nesta resposta">${tok(m.tokens.in + m.tokens.out + m.tokens.cache)} tokens</button>` : ""}${m.brain?.length ? `<span class="b" title="${esc(m.brain.join("\n"))}">${plural(m.brain.length, "nota", "notas")} do cérebro</span>` : ""}${m.state === "stopped" ? "<span>interrompido</span>" : ""}</div>`]];
   if (m.tokens && openActs.has(`x:${i}`)) parts.push(["xray", xrayHtml(m)]);
   // raciocínio, comandos, arquivos e ferramentas seguidos viram um grupo só
   let group = [];
@@ -2484,17 +2544,27 @@ const WINDOW_EXTRA = { overage_included: "extra" };
 const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
 const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
 const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
+// segunda linha da conta: o plano, e na conta da máquina o aviso de que é o login que já estava lá (o e-mail já é o título)
+const detalheDaConta = (a) => { const d = a.status.detail || "Pronta"; if (!ehDaMaquina(a)) return d; const plano = d.replace(/\s*·?\s*[\w.+-]+@[\w-]+(\.[\w-]+)+/, "").trim(); return [plano && !/^(pronta|logado)$/i.test(plano) ? plano : "", "login desta máquina"].filter(Boolean).join(" · "); };
+// o motivo do limite vem cru do CLI (às vezes um pedaço de JSON): vira uma frase, ou some se não der para dizer nada
+function motivoDoLimite(r) {
+  const t = String(r || "").trim();
+  if (!t) return "";
+  if (/RESOURCE_EXHAUSTED|credits? (are )?depleted|billing|prepay|quota/i.test(t)) return "a cota ou o crédito desta conta acabou no provedor";
+  if (/usage limit|rate limit|limit reached|too many requests|429/i.test(t)) return "limite de uso da conta";
+  return /[{}"\\]|^\W/.test(t) || t.length > 140 ? "" : t.replace(/\.$/, "");
+}
 function renderAccounts() {
   const A = S.accounts.filter((a) => prov(a.provider).installed), lim = A.filter((a) => a.limit);
   $("accLead").textContent = `${plural(A.filter(ready).length, "conta pronta", "contas prontas")} de ${A.length}.` + (lim.length ? ` ${plural(lim.length, "bateu", "bateram")} no limite, a primeira volta às ${hm(Math.min(...lim.map((a) => a.limit.until)))}.` : "") + " Cada conta tem login próprio, feito pelo CLI oficial do provedor.";
   const line = (a) => {
     const foco = view.type === "accounts" && view.focus === a.id ? "foco" : "";
-    if (!a.status.ok) return `<div class="conta sem ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(a.label)}</b><div>Sem login</div></div><div class="como">O login abre aqui no painel, pelo CLI oficial do ${esc(prov(a.provider).name)}.</div>
+    if (!a.status.ok) return `<div class="conta sem ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(rot(a))}</b><div>Sem login</div></div><div class="como">O login abre aqui no painel, pelo CLI oficial do ${esc(prov(a.provider).name)}.</div>
       <div class="acao"><button class="btn line mini" data-login="${a.id}">Fazer login</button><button class="link" data-edit="${a.id}">Gerenciar</button></div></div>`;
-    return `<div class="conta ${a.limit ? "limite" : ""} ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(a.label)}</b><div title="${esc(a.status.detail || "")}">${esc(a.status.detail || "Pronta")}${a.limit ? ' · <span class="lim">no limite</span>' : ""}</div></div>
-      ${a.usage?.length ? usoBarras(a) : `<div class="como">Sem leitura de uso ainda. Aparece depois da primeira resposta desta conta.</div>`}
+    return `<div class="conta ${a.limit ? "limite" : ""} ${foco}" data-conta="${esc(a.id)}"><div class="n"><b>${esc(rot(a))}</b><div title="${esc(a.status.detail || "")}">${esc(detalheDaConta(a))}${a.limit ? ' · <span class="lim">no limite</span>' : ""}</div></div>
+      ${a.usage?.length ? usoBarras(a) : `<div class="como quieto">Uso aparece depois da primeira resposta</div>`}
       <div class="acao"><button class="btn line mini" data-open="${a.id}">Abrir sessão</button><button class="link" data-edit="${a.id}">Gerenciar</button></div></div>`
-      + (a.limit ? `<div class="conta-nota">${ic("troca")}<span><b>${esc(accName(a))}</b> está em pausa até ${hm(a.limit.until)}${a.limit.reason ? `: ${esc(a.limit.reason)}` : ""}. ${S.settings.rotate ? "O rodízio leva os pedidos para a próxima conta do mesmo provedor, com a conversa junto." : "O rodízio está desligado em Ajustes."}</span><button class="btn line mini" data-free="${a.id}">Liberar agora</button></div>` : "");
+      + (a.limit ? `<div class="conta-nota">${ic("troca")}<span><b>${esc(accName(a))}</b> está em pausa até ${hm(a.limit.until)}${motivoDoLimite(a.limit.reason) ? `: ${esc(motivoDoLimite(a.limit.reason))}` : ""}. ${S.settings.rotate ? "O rodízio leva os pedidos para a próxima conta do mesmo provedor, com a conversa junto." : "O rodízio está desligado em Ajustes."}</span><button class="btn line mini" data-free="${a.id}">Liberar agora</button></div>` : "");
   };
   const html = S.providers.map((p) => {
     const mine = S.accounts.filter((a) => a.provider === p.id), logged = mine.filter((a) => a.status.ok).length;
@@ -2514,17 +2584,28 @@ function renderAccounts() {
 async function renderTools(t) {
   t ||= await api("tools").catch(() => null);
   if (!t) return;
-  const skills = Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${prov(p)?.name || p}: ${n}`).join(" · ");
+  const skills = Object.entries(t.skills).filter(([, n]) => n);
   const mcp = [...new Set([...t.mcp.claude, ...t.mcp.codex])];
   const iso = t.accounts.length;
   paintApps(t);
-  $("toolsBox").innerHTML = `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button><small>${iso ? "" : "Você ainda não tem conta além da padrão; liga quando adicionar uma."}</small></div>
-    <div class="toggle"><span>${skills ? `Skills na conta padrão: ${esc(skills)}.` : "Nenhuma skill instalada na conta padrão."} ${t.on ? `Nas ${plural(iso, "outra conta", "outras contas")}: ${t.accounts.map((a) => `${esc(acc(a.id)?.label || a.id)} com ${a.linked} por atalho${a.own ? ` e ${a.own} própria${a.own > 1 ? "s" : ""}` : ""}`).join("; ") || "nenhuma"}.` : "Ligado, cada skill entra nas outras contas como atalho para a pasta original; o que a conta já tem não é tocado."}</span>${t.on ? `<button class="link" data-tools="sync">Sincronizar agora</button>` : ""}</div>
-    <div class="toggle"><span>Servidores MCP: ${mcp.length ? esc(mcp.join(", ")) : "nenhum configurado"}. ${t.on ? "Vão junto em cada conversa das outras contas do Claude e do Codex." : "Ligado, vão junto em cada conversa das outras contas do Claude e do Codex."} Servidor com login próprio (OAuth) pede o login de novo em cada conta.</span></div>`;
+  // três linhas, cada uma com o nome à esquerda e o conteúdo em peças: nada de parágrafo corrido
+  const linha = (nome, ajuda, corpo, acao = "") => `<div class="ferr"><div class="ferr-n"><b>${nome}</b><small>${ajuda}</small></div><div class="ferr-c">${corpo}</div>${acao ? `<div class="ferr-a">${acao}</div>` : ""}</div>`;
+  const comProprias = t.accounts.filter((a) => a.own).length, porAtalho = Math.max(0, ...t.accounts.map((a) => a.linked));
+  const detalhe = t.accounts.map((a) => `${acc(a.id) ? rot(acc(a.id)) : a.id}: ${a.linked} por atalho${a.own ? `, ${a.own} própria${a.own > 1 ? "s" : ""}` : ""}`).join("\n");
+  $("toolsBox").innerHTML = `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta da máquina</button><small>${iso ? "" : "Você ainda não tem outra conta; liga quando adicionar uma."}</small></div>`
+    + linha("Skills", "Instaladas na conta da máquina de cada provedor.",
+      skills.length ? skills.map(([p, n]) => `<span class="peca"><span class="selo">${plogo(p)}</span>${esc(prov(p)?.name || p)}<b class="num">${n}</b></span>`).join("") : `<span class="vazio-l">Nenhuma skill instalada.</span>`)
+    + (iso ? linha("Nas outras contas", t.on ? "Cada skill entra como atalho para a pasta original; o que a conta já tem não é tocado." : "Ligue a chave acima para as outras contas receberem.",
+      t.on ? `<span class="resumo" title="${esc(detalhe)}">${plural(iso, "conta recebe", "contas recebem")} ${plural(porAtalho, "skill", "skills")} por atalho${comProprias ? `, e ${plural(comProprias, "tem", "têm")} skill própria além dessas` : ""}.</span>` : `<span class="vazio-l">Desligado.</span>`,
+      t.on ? `<button class="link" data-tools="sync">Sincronizar agora</button>` : "") : "")
+    + linha("Servidores MCP", "Vão junto em cada conversa das outras contas do Claude e do Codex. Os que têm login próprio pedem o login de novo em cada conta.",
+      mcp.length ? mcp.map((m) => `<span class="peca">${appSelo(m)}${esc(m)}</span>`).join("") : `<span class="vazio-l">Nenhum configurado.</span>`,
+      `<button class="link" data-ver-apps>Ver apps conectados</button>`);
 }
 $("v-accounts").onclick = async (e) => {
   const b = e.target.closest("button"); if (!b) return;
   const d = b.dataset;
+  if ("verApps" in d) return $("appsPill").click();
   if (d.tools) { b.disabled = true; const t = await api("tools", "POST", d.tools === "sync" ? { sync: true } : { on: d.tools === "1" }).catch(() => null); if (t?.did) toast(d.tools === "0" ? `Atalhos removidos: ${t.did.removed}.` : `Skills ligadas por atalho: ${t.did.linked} nova${t.did.linked === 1 ? "" : "s"}${t.did.removed ? `, ${t.did.removed} removida${t.did.removed === 1 ? "" : "s"}` : ""}.`); await refresh(); return renderTools(t); }
   if (d.free) { await api("limits/" + d.free, "DELETE"); return refresh(); }
   if (d.add) return openDialog(null, d.add);
