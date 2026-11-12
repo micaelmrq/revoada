@@ -1616,6 +1616,7 @@ $("targetChip").onclick = (e) => { e.stopPropagation(); paintTargets(); togglePo
 document.addEventListener("click", (e) => { if (!e.target.closest(".pop")) closePops(); });
 
 function targets() {
+  if (view.type === "chat" && chat?.room) return chat.room; // na sala quem responde é a sala inteira
   if (view.type === "chat") return chatTarget ? [chatTarget] : [];
   const valid = [...picked].filter((t) => t.startsWith("pool:") ? S.accounts.some((a) => a.provider === t.slice(5) && ready(a)) : acc(t) && ready(acc(t)));
   if (valid.length) return valid;
@@ -1635,7 +1636,7 @@ function paintComposer() {
   $("prompt").classList.toggle("sug", !!sug);
   if (sug && !$("prompt").value) $("notes").textContent = "sugestão · Tab aceita · Enter envia";
   else if ($("notes").textContent.startsWith("sugestão")) $("notes").textContent = "";
-  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? "Escreva a próxima: entra quando o agente terminar" : "Responder";
+  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? (chat?.room ? "Escreva: a sala para e ouve assim que quem está falando terminar" : "Escreva a próxima: entra quando o agente terminar") : "Responder";
   const ts = targets();
   const pv = curProvider(), ch = curChoice();
   $("modelChip").style.display = pv && !terminal && !(inChat && chat?.room) && !(!inChat && targets().length > 1 && sala) ? "inline-flex" : "none"; // na sala cada agente fala no padrão da própria conta
@@ -1686,9 +1687,9 @@ function paintTargets() {
     const opt = (v, name, note, ok) => `<button class="opt ${ts.has(v) ? "on" : ""}" data-t="${v}" ${ok ? "" : "disabled"}><span class="ck">${ts.has(v) ? ICON.check : ""}</span>${esc(name)}<small>${esc(note)}</small></button>`;
     return opt("pool:" + p.id, p.name, n ? `rodízio · começa pela mais folgada de ${n}` : "nenhuma conta pronta", n)
       + mine.map((a) => opt(a.id, accName(a), a.limit ? `no limite até ${hm(a.limit.until)}` : a.status.ok ? useNote(a) || "só esta conta" : "sem login", ready(a))).join("");
-  }).join("") + `<span class="label" style="padding-top:12px;font-weight:400;font-size:12.5px">${view.type === "chat" ? "Trocar de agente no meio da conversa leva o histórico junto, mesmo entre provedores." : "Uma conta abre uma conversa. Várias respondem em paralelo, lado a lado."}</span>`;
+  }).join("") + `<span class="label" style="padding-top:12px;font-weight:400;font-size:12.5px">${view.type === "chat" && chat?.room ? "Marque quem fica na sala. Quem entra agora lê a conversa desde o começo." : view.type === "chat" ? "Trocar de agente no meio da conversa leva o histórico junto, mesmo entre provedores." : "Uma conta abre uma conversa. Várias respondem em paralelo, lado a lado."}</span>`;
 }
-$("popTarget").onclick = (e) => {
+$("popTarget").onclick = async (e) => {
   e.stopPropagation();
   const tudo = e.target.closest("[data-todos]");
   if (tudo) {
@@ -1698,6 +1699,15 @@ $("popTarget").onclick = (e) => {
     paintTargets(); return paintComposer();
   }
   const b = e.target.closest("[data-t]"); if (!b || b.disabled) return;
+  // na sala o seletor põe e tira gente: a marca muda na hora e o servidor guarda quem fica
+  if (view.type === "chat" && chat?.room) {
+    const sala = chat.room.includes(b.dataset.t) ? chat.room.filter((t) => t !== b.dataset.t) : [...chat.room, b.dataset.t];
+    if (!sala.length) return toast("A sala precisa de pelo menos um agente.");
+    const r = await api(`convos/${chat.id}/room`, "POST", { room: sala }).catch((e) => { toast(e.message || "Não consegui mudar a sala."); return null; });
+    if (!r) return;
+    if (r.room) chat.room = r.room; else { delete chat.room; chatTarget = sala[0]; toast(`A sala ficou só com ${targetName(sala[0])}: virou conversa comum.`); }
+    paintTargets(); return paintComposer();
+  }
   if (view.type === "chat") { chatTarget = b.dataset.t; paintTargets(); paintComposer(); return closePops(); }
   const cur = new Set(targets()); cur.has(b.dataset.t) ? cur.delete(b.dataset.t) : cur.add(b.dataset.t);
   picked.clear(); cur.forEach((t) => picked.add(t)); store.set("targets", JSON.stringify([...picked]));
@@ -2409,6 +2419,8 @@ $("msgs").addEventListener("click", async (e) => {
   loadChat(true);
 });
 $("queued").addEventListener("click", async (e) => {
+  // enviar agora: para quem está respondendo; a mensagem que esperava entra em seguida
+  if (e.target.closest("[data-ja]") && chat) { await api(`convos/${chat.id}/stop`, "POST", {}).catch(() => {}); return loadChat(true); }
   const b = e.target.closest("[data-unq]"); if (!b || !chat) return;
   await api(`convos/${chat.id}/queue/${b.dataset.unq}`, "DELETE").catch(() => {});
   loadChat(true);
@@ -2436,7 +2448,7 @@ function renderChat() {
     while (el.children.length > parts.length) el.lastChild.remove();
   });
   while (wrap.children.length > chat.messages.length) wrap.lastChild.remove();
-  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
+  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : chat.room ? "entra quando quem está falando terminar" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}${chat.working && !j ? `<button class="link" data-ja title="Interrompe quem está respondendo e manda esta mensagem">enviar agora</button>` : ""}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
   if ($("queued").dataset.h !== queued) { $("queued").dataset.h = queued; $("queued").innerHTML = queued; }
   tickChat();
   // o plano muda enquanto o agente trabalha; quando ele termina, busca a versão final sem esperar
@@ -2566,7 +2578,7 @@ const WINDOW = { five_hour: "5 horas", seven_day: "7 dias" };
 // janela que o provedor manda com nome próprio (seven_day_opus, seven_day_overage_included): nome curto que cabe na coluna
 const WINDOW_EXTRA = { overage_included: "Fable", opus: "Opus", sonnet: "Sonnet" };
 const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
-const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
+const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d", seven_day_overage_included: "Fable", seven_day_opus: "Opus", seven_day_sonnet: "Sonnet" }[u.key] || janelaCurta(u.key)} ${u.pct}%`).join(" · ") : "");
 const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}${lidoHa(u.at) ? " · " + lidoHa(u.at) : ""}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
 // segunda linha da conta: o plano, e na conta da máquina o aviso de que é o login que já estava lá (o e-mail já é o título)
 const detalheDaConta = (a) => { const d = a.status.detail || "Pronta"; if (!ehDaMaquina(a)) return d; const plano = d.replace(/\s*·?\s*[\w.+-]+@[\w-]+(\.[\w-]+)+/, "").trim(); return [plano && !/^(pronta|logado)$/i.test(plano) ? plano : "", "login desta máquina"].filter(Boolean).join(" · "); };

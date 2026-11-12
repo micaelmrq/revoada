@@ -889,6 +889,16 @@ describe.skipIf(!CHROME)("tela", () => {
     const conversa = await page(`return { sala: chat.room, falas: chat.messages.filter((m) => m.role === "assistant").map((m) => [m.accountId, m.state]), nomes: [...document.querySelectorAll("#msgs .m:not(.user) .who b")].map((b) => b.textContent),
       sub: document.querySelector("#chSub").textContent.startsWith("sala com Claude"), rodape: document.querySelector("#targetChip").innerText.trim(), modelo: document.querySelector("#modelChip").style.display };`);
     expect(conversa).toEqual({ sala: ["claude-padrao", dois], falas: [["claude-padrao", "done"], [dois, "done"]], nomes: ["Claude", "Codex"], sub: true, rodape: "Sala · 2 agentes", modelo: "none" });
+    // dentro da sala o seletor mostra todos os presentes marcados, e desmarcar um tira ele da sala (com um só, vira conversa comum)
+    await page(`paintTargets(); togglePop("popTarget");`);
+    expect(await page(`return [...document.querySelectorAll("#popTarget .opt.on")].map((b) => b.dataset.t)`)).toEqual(["claude-padrao", dois]);
+    await page(`document.querySelector('#popTarget [data-t="pool:claude"]').click();`);
+    await until(`chat.room.length === 3`);
+    expect(await page(`return [chat.room, document.querySelector("#targetChip").innerText.trim(), document.querySelector("#popTarget").classList.contains("on")]`)).toEqual([["claude-padrao", dois, "pool:claude"], "Sala · 3 agentes", true]);
+    await page(`document.querySelector('#popTarget [data-t="pool:claude"]').click();`);
+    await until(`chat.room.length === 2`);
+    expect((await env.api(`convos/${await page("return chat.id")}`)).room).toEqual(["claude-padrao", dois]);
+    await page(`closePops();`);
     // voz: o botão liga e desliga, e o texto lido sai sem código, marcação nem endereço
     const vozes = await page(`const antes = document.querySelector("#vozBtn").getAttribute("aria-pressed"); document.querySelector("#vozBtn").click(); const ligada = document.querySelector("#vozBtn").getAttribute("aria-pressed");
       document.querySelector("#vozBtn").click(); calaVoz();

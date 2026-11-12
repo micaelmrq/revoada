@@ -1186,6 +1186,10 @@ const server = Bun.serve({
         if (req.method === "POST") convos.setPlan(c.id, !!body.on);
         return json(convos.plan(c.id));
       }
+      if (req.method === "POST" && action === "room") {
+        const sala = (Array.isArray(body.room) ? body.room : []).filter((t: unknown): t is string => typeof t === "string" && (t.startsWith("pool:") ? !!PROVIDERS[t.slice(5)] : !!account(t)));
+        try { return json({ room: convos.setRoom(c, sala).room || null }); } catch (e: any) { return fail(e.message); }
+      }
       if (req.method === "POST" && action === "rewind") {
         await Promise.all(accounts.filter((a) => !statusCache.has(a.id)).map(refreshStatus));
         try { convos.rewind(c, Number(body.index), typeof body.text === "string" ? body.text : undefined); return json({ ok: true }); } catch (e: any) { return fail(e.message); }

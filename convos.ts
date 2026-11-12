@@ -601,6 +601,8 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
         // quem já teve a vez nesta rodada, e as contas marcadas pelo nome: o rodízio de um provedor não repete nenhuma delas
         const naVez = new Set<string>(), marcadas = c.room!.filter((t) => !t.startsWith("pool:"));
         for (const target of c.room!) {
+          // o usuário falou no meio: a sala para de se revezar e ouve, sem esperar o fim das rodadas
+          if (c.queue?.length) break rounds;
           const pool = target.startsWith("pool:");
           const acc = pool ? d.pick(target.slice(5), [...marcadas, ...naVez]) : d.account(target);
           // rodízio sem conta sobrando porque as do provedor já estão na sala pelo nome: não é falta, só não há mais ninguém
@@ -646,7 +648,9 @@ ${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${kee
     c.waiting = false;
     touch(c);
     d.onIdle();
-    const next = !halted ? c.queue?.shift() : undefined;
+    // parar quem está falando também solta a mensagem que esperava ("enviar agora"), como na conversa de um agente só
+    const next = c.queue?.shift();
+    void halted;
     if (c.queue && !c.queue.length) delete c.queue;
     if (next) { const { text, at: _at, ...patch } = next; send(c, text, patch); }
     if (!c.titled && last?.state === "done") {
@@ -801,6 +805,15 @@ Responda em português, com uma lista numerada do mais grave para o menos. Cada 
 
   return {
     create, send, review, watch, rewind,
+    // quem está na sala: pôr ou tirar agente no meio da conversa. Com um só, a sala volta a ser conversa comum com ele.
+    setRoom(c: Convo, list: string[]) {
+      const sala = [...new Set(list)];
+      if (!sala.length) throw new Error("a sala precisa de pelo menos um agente");
+      if (sala.length === 1) { delete c.room; c.target = sala[0]; c.native = null; }
+      else { c.room = sala; c.target = sala[0]; }
+      touch(c);
+      return c;
+    },
     // plano em arquivo da conversa: o texto e quantos passos já foram marcados
     plan(id: string) {
       const c = convos.get(id), text = c?.plan ? readPlan(id) : "";

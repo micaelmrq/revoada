@@ -275,6 +275,20 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     c = await idle(r.id);
     expect(falas(c).slice(2).map((t: string) => t.replace(/ · .+? (fala|reage).*/, " $1"))).toEqual(["sala: Claude fala", "sala: Codex fala", "sala: Claude reage", "sala: Codex reage"]);
     expect(c.messages.filter((m: any) => m.role === "user").length).toBe(2);
+    // falar no meio: a sala não termina as rodadas antes de ouvir. Com SALA-TEIMA seriam quatro falas; a mensagem nova entra antes disso
+    await post(`convos/${r.id}/send`, { text: "de novo SALA-TEIMA" });
+    expect(await post(`convos/${r.id}/send`, { text: "espera, mudei de ideia" })).toMatchObject({ queued: true });
+    c = await idle(r.id);
+    const papeis = c.messages.map((m: any) => m.role), terceira = papeis.lastIndexOf("user"), segunda = papeis.lastIndexOf("user", terceira - 1);
+    expect(c.messages[terceira].text).toBe("espera, mudei de ideia");
+    expect(terceira - segunda - 1).toBeLessThan(4);
+    expect(c.queue).toBeUndefined();
+    // pôr e tirar gente no meio: a lista vale para a próxima mensagem; com um só, deixa de ser sala
+    expect((await post(`convos/${r.id}/room`, { room: [colegaId, "claude-padrao", "conta-que-nao-existe"] })).room).toEqual([colegaId, "claude-padrao"]);
+    expect((await api(`convos/${r.id}/room`, "POST", { room: [] })).body.error).toContain("pelo menos um agente");
+    expect((await post(`convos/${r.id}/room`, { room: [colegaId] })).room).toBe(null);
+    const sozinha = await get(`convos/${r.id}`);
+    expect([sozinha.room, sozinha.target]).toEqual([undefined, colegaId]);
   }, SLOW);
 
   test("sala: menos de dois agentes é recusado, não há teto, e conta fora da rodada avisa sem travar os outros", async () => {
