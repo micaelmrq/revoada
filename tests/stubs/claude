@@ -75,7 +75,8 @@ const ANSWER = `Quase. Às 14:42 oito contas estão criadas e a última (Oka) es
 \`\`\``;
 const nap = (ms: number) => new Promise((r) => setTimeout(r, ms));
 out({ type: "system", subtype: "init", session_id: "s-claude", model: MODEL });
-out({ type: "rate_limit_event", rate_limit_info: { unifiedWindows: { five_hour: { utilization: 0.42, resetsAt: now + 3600 }, seven_day: { utilization: 0.1, resetsAt: now + 86400 } } } });
+// COTA-PARCIAL: como o CLI de verdade às vezes faz, informa só uma das janelas (aqui a do Fable)
+out({ type: "rate_limit_event", rate_limit_info: { unifiedWindows: said.includes("COTA-PARCIAL") ? { seven_day_overage_included: { utilization: 0.88, resetsAt: now + 86400 } } : { five_hour: { utilization: 0.42, resetsAt: now + 3600 }, seven_day: { utilization: 0.1, resetsAt: now + 86400 } } } });
 if (a.includes("--permission-prompt-tool")) {
   // "SO-LEITURA" no pedido: o agente quer só listar; o resto quer criar arquivo
   const input = { command: said.includes("SO-LEITURA") ? "ls -la | head -5" : RICH ? LONG : "touch feito.txt" };

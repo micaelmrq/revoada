@@ -16,7 +16,7 @@ const MAX_INLINE_IMAGE = 5_000_000;
 export type Mode = "read" | "ask" | "edit" | "full";
 type Acc = { id: string; provider: string; label: string; home: string | null };
 export type Attachment = { id: string; name: string; path: string; image: boolean; mime: string };
-export type Usage = { key: string; pct: number; resetsAt: number };
+export type Usage = { key: string; pct: number; resetsAt: number; at?: number }; // at: quando o CLI informou esta janela
 // o que a resposta custou em tokens, pelo que o próprio CLI informa (cache = entrada relida mais barata)
 export type Tokens = { in: number; out: number; cache: number; usd?: number };
 // quanto da janela de contexto a conversa ocupa depois desta resposta (e o tamanho da janela, quando o CLI informa)
@@ -153,7 +153,8 @@ const ADAPTERS: Record<string, Adapter> = {
       if (ev.type === "system" && ev.subtype === "init") { if (typeof ev.model === "string") s.model(ev.model); return s.session(ev.session_id); }
       if (ev.type === "rate_limit_event") {
         const w = ev.rate_limit_info?.unifiedWindows || {};
-        return s.usage(Object.entries<any>(w).map(([key, v]) => ({ key, pct: Math.round((v.utilization || 0) * 100), resetsAt: (v.resetsAt || 0) * 1000 })));
+        // o CLI manda só as janelas que quis informar nesta resposta (five_hour, seven_day, seven_day_overage_included): quem guarda junta com as anteriores
+        return s.usage(Object.entries<any>(w).filter(([, v]) => v && typeof v.utilization === "number").map(([key, v]) => ({ key, pct: Math.round(v.utilization * 100), resetsAt: (v.resetsAt || 0) * 1000, at: Date.now() })));
       }
       if (ev.type === "control_request") { if (ev.request?.subtype === "can_use_tool") s.ask(ev.request_id, ev.request.tool_name, ev.request.input || {}); return; }
       if (ev.type === "stream_event") {

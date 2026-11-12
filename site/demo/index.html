@@ -1837,7 +1837,10 @@ $("popModel").addEventListener("change", (e) => { if (e.target.id === "modelFree
 $("popModel").addEventListener("keydown", (e) => { if (e.target.id === "modelFree" && e.key === "Enter") { e.target.blur(); closePops(); $("prompt").focus(); } });
 
 // ---------- uso: janela de contexto e limites da conta ----------
-const WINDOW_NAME = { five_hour: "Limite de sessão", seven_day: "Semanal · todos os modelos" };
+// Nomes como o Claude mostra. seven_day_overage_included é o que o Claude Code chama de limite do Fable (o modelo que tem cota semanal própria).
+const WINDOW_NAME = { five_hour: "Limite de 5 horas", seven_day: "Semanal · todos os modelos", seven_day_overage_included: "Semanal · Fable", seven_day_opus: "Semanal · Opus", seven_day_sonnet: "Semanal · Sonnet" };
+// de quando é a leitura: o número vem da última resposta da conta, não é consultado ao vivo
+const lidoHa = (at) => { if (!at) return ""; const m = Math.max(0, Math.round((Date.now() - at) / 60000)); return m < 2 ? "lido agora" : m < 60 ? `lido há ${m} min` : m < 1440 ? `lido há ${Math.round(m / 60)} h` : `lido há ${Math.round(m / 1440)} d`; };
 const windowName = (k) => WINDOW_NAME[k] || (k.startsWith("seven_day_") ? `Semanal · ${k.slice(10).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}` : k.replace(/_/g, " "));
 const resets = (t) => { const ms = t - Date.now(); if (ms <= 0) return ""; const min = Math.round(ms / 60000); return min < 1440 ? `Reinicia em ${min >= 60 ? `${Math.floor(min / 60)} h ` : ""}${min % 60} min` : `Reinicia ${new Date(t).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}`; };
 // a conta cujo uso interessa agora: a que está respondendo a conversa, ou as que podem responder o próximo pedido
@@ -1866,7 +1869,8 @@ function paintUsage() {
     : `<small>O tamanho da conversa na janela de contexto aparece depois da primeira resposta. Hoje só o Claude informa.</small><hr>`;
   const accHtml = accs.length ? accs.map((a) => `<span class="label">Limites de uso · ${esc(accName(a))}${a.status.detail ? ` · ${esc(a.status.detail.split(" · ")[0])}` : ""}</span>`
     + (a.limit ? row("No limite", `volta ${hm(a.limit.until)}`, 100, "hit") : "")
-    + ((a.usage || []).length ? a.usage.map((u) => row(windowName(u.key), `${resets(u.resetsAt)}  ${u.pct}%`.trim(), u.pct)).join("") : a.limit ? "" : `<small>Esta conta ainda não informou consumo. Aparece depois da primeira resposta dela.</small>`)).join("")
+    + ((a.usage || []).length ? a.usage.map((u) => row(windowName(u.key), `${resets(u.resetsAt)}  ${u.pct}%`.trim(), u.pct)).join("")
+      + `<small>${[...new Set(a.usage.map((u) => lidoHa(u.at)).filter(Boolean))].join(" e ") || "Leitura"} da última resposta desta conta. O ${esc(prov(a.provider)?.name || "provedor")} só informa parte das janelas a cada resposta; a que não aparece ainda não foi informada.</small>` : a.limit ? "" : `<small>Esta conta ainda não informou consumo. Aparece depois da primeira resposta dela.</small>`)).join("")
     : `<small>Nenhuma conta pronta para este pedido.</small>`;
   $("popUsage").innerHTML = ctxHtml + accHtml;
 }
@@ -2540,10 +2544,10 @@ async function loadRun() {
 // ---------- contas ----------
 const WINDOW = { five_hour: "5 horas", seven_day: "7 dias" };
 // janela que o provedor manda com nome próprio (seven_day_opus, seven_day_overage_included): nome curto que cabe na coluna
-const WINDOW_EXTRA = { overage_included: "extra" };
+const WINDOW_EXTRA = { overage_included: "Fable", opus: "Opus", sonnet: "Sonnet" };
 const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
 const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
-const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
+const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}${lidoHa(u.at) ? " · " + lidoHa(u.at) : ""}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
 // segunda linha da conta: o plano, e na conta da máquina o aviso de que é o login que já estava lá (o e-mail já é o título)
 const detalheDaConta = (a) => { const d = a.status.detail || "Pronta"; if (!ehDaMaquina(a)) return d; const plano = d.replace(/\s*·?\s*[\w.+-]+@[\w-]+(\.[\w-]+)+/, "").trim(); return [plano && !/^(pronta|logado)$/i.test(plano) ? plano : "", "login desta máquina"].filter(Boolean).join(" · "); };
 // o motivo do limite vem cru do CLI (às vezes um pedaço de JSON): vira uma frase, ou some se não der para dizer nada

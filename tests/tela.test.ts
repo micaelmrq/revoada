@@ -291,7 +291,7 @@ describe.skipIf(!CHROME)("tela", () => {
     const use = await page(`const p = document.querySelector("#popUsage"); return { on: p.classList.contains("on"), rows: [...p.querySelectorAll(".u")].map((u) => u.querySelector("span").textContent + " | " + u.querySelector("small").textContent.replace(/\\s+/g, " ").trim()), fits: p.getBoundingClientRect().right <= innerWidth && p.getBoundingClientRect().left >= 0 };`);
     expect(use.on && use.fits).toBe(true);
     expect(use.rows[0]).toBe("Janela de contexto | 53,9k / 200k (27%)");
-    expect(use.rows[1]).toMatch(/^Limite de sessão \| Reinicia em (5\d|60|1 h 0) min 42%$/);
+    expect(use.rows[1]).toMatch(/^Limite de 5 horas \| Reinicia em (5\d|60|1 h 0) min 42%$/);
     expect(use.rows[2]).toMatch(/^Semanal · todos os modelos \| Reinicia (em 23 h \d+ min|\S+,? \d\d:\d\d) 10%$/);
     await page(`closePops(); localStorage.removeItem("models"); for (const k of Object.keys(choice)) delete choice[k];`);
   }, SLOW);
@@ -890,6 +890,12 @@ describe.skipIf(!CHROME)("tela", () => {
       return { antes, ligada, depois: document.querySelector("#vozBtn").getAttribute("aria-pressed"), limpo: paraOuvir(${JSON.stringify("**Pronto**: rodei `bun test`.\n\n```js\nconst a = 1;\n```\n- veja https://exemplo.dev/x")}) };`);
     expect(vozes).toEqual({ antes: "false", ligada: "true", depois: "false", limpo: "Pronto: rodei bun test. Trecho de código. veja link" });
     await page(`setMode(window.__modo); picked.clear(); store.set("targets", "[]"); go({ type: "home" }); paintComposer();`);
+  }, SLOW);
+
+  test("cota de uso: as janelas têm o nome que o Claude usa e a leitura diz de quando é", async () => {
+    expect(await page(`return [windowName("five_hour"), windowName("seven_day"), windowName("seven_day_overage_included"), janelaCurta("seven_day_overage_included"), janelaCurta("seven_day_opus"),
+      lidoHa(Date.now() - 30000), lidoHa(Date.now() - 12 * 60000), lidoHa(Date.now() - 3 * 3600000), lidoHa(undefined)]`))
+      .toEqual(["Limite de 5 horas", "Semanal · todos os modelos", "Semanal · Fable", "7 dias · Fable", "7 dias · Opus", "lido agora", "lido há 12 min", "lido há 3 h", ""]);
   }, SLOW);
 
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {

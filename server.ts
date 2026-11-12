@@ -209,9 +209,15 @@ let vigil: Record<string, unknown> | null = null;
 const usage: Record<string, Usage[]> = readJson(join(ROOT, "usage.json")) || {};
 const liveUsage = (id: string) => (usage[id] || []).filter((u) => u.resetsAt > Date.now());
 const usedPct = (id: string) => Math.max(0, ...liveUsage(id).map((u) => u.pct));
+// Cada leitura traz só parte das janelas. A que veio substitui a mesma janela de antes; a que não veio continua valendo
+// até a hora em que ela renova, com a data em que foi lida. Antes a leitura nova apagava as outras.
+const USAGE_ORDER = ["five_hour", "seven_day", "seven_day_overage_included"];
 function setUsage(id: string, windows: Usage[]) {
   if (!windows.length) return;
-  usage[id] = windows;
+  const now = Date.now(), novas = new Map(windows.map((w) => [w.key, { ...w, at: w.at || now }]));
+  const antigas = (usage[id] || []).filter((u) => !novas.has(u.key) && u.resetsAt > now);
+  const pos = (k: string) => { const i = USAGE_ORDER.indexOf(k); return i < 0 ? USAGE_ORDER.length : i; };
+  usage[id] = [...novas.values(), ...antigas].sort((a, b) => pos(a.key) - pos(b.key) || a.key.localeCompare(b.key));
   writeFileSync(join(ROOT, "usage.json"), JSON.stringify(usage));
 }
 // o Codex grava o consumo no arquivo da sessão: o último registro vale

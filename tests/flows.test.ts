@@ -182,6 +182,12 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(items[0].text).toContain("olá mundo");
     const acc = (await get("state")).accounts.find((a: any) => a.id === "claude-padrao");
     expect(acc.usage.find((u: any) => u.key === "five_hour").pct).toBe(42);
+    // resposta que informa só uma janela não apaga as outras: elas continuam com a leitura anterior, cada uma com a sua hora
+    const antes = acc.usage.find((u: any) => u.key === "five_hour").at;
+    await idle(await chat("claude-padrao", "COTA-PARCIAL"));
+    const depois = (await get("state")).accounts.find((a: any) => a.id === "claude-padrao").usage;
+    expect(depois.map((u: any) => [u.key, u.pct])).toEqual([["five_hour", 42], ["seven_day", 10], ["seven_day_overage_included", 88]]);
+    expect([depois[0].at === antes, depois[2].at >= antes, depois.every((u: any) => typeof u.at === "number")]).toEqual([true, true, true]);
     const titled = await until(async () => { const x = await get(`convos/${c.id}`); return x.title === "Título de teste" && x; });
     expect(titled.titled).toBe(true);
   }, SLOW);
