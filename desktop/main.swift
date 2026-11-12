@@ -225,6 +225,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     log("\(message.body)")
   }
 
+  // microfone pedido pela própria página do app (falar o pedido): quem decide é a permissão do macOS, que aparece uma vez
+  @available(macOS 12.0, *)
+  func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+    decisionHandler(origin.host == "127.0.0.1" && type == .microphone ? .grant : .deny)
+  }
+
   // "Escolher outra pasta" na caixa de pedido: a janela de pasta do sistema, e o caminho volta para a página
   func escolhePasta(aPartirDe atual: String?) {
     let painel = NSOpenPanel()

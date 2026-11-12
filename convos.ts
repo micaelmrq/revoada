@@ -43,6 +43,7 @@ export type Msg = {
   model?: string;      // modelo que respondeu de fato, como o CLI informou
   routed?: Tier;       // porte que o modelo automático deu a este pedido
   review?: boolean;    // resposta de outra conta revisando o trabalho desta conversa
+  room?: boolean;      // fala de um agente numa sala: a vez dele na conversa entre vários
   reviewKind?: "security";
 };
 // mensagem escrita enquanto o agente respondia: entra sozinha quando ele terminar
@@ -52,6 +53,7 @@ export type Convo = {
   accountId: string | null; provider: string; native: { accountId: string; sessionId: string } | null;
   messages: Msg[]; working: boolean; at: number; rev: number;
   queue?: Queued[];
+  room?: string[];     // sala: os agentes (conta ou "pool:provedor") que conversam aqui, na ordem em que falam
   suggest?: string;    // próxima mensagem provável, oferecida no campo quando o agente termina
   model?: string;      // escolhidos pelo usuário para as próximas respostas; sem valor, vale o padrão da conta ("auto" = decide pelo pedido)
   effort?: string;
@@ -225,6 +227,7 @@ export function createConvos(d: {
   dir: string; vault: string; attachDir: string;
   account: (id: string | null) => Acc | undefined;
   accName: (a: Acc | undefined) => string;
+  provName?: (provider: string) => string;
   binPath: (provider: string) => string | null;
   envFor: (a: Acc) => Record<string, string>;
   pick: (provider: string, skip: string[]) => Acc | undefined;
@@ -301,8 +304,8 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
 </plano-em-arquivo>`;
 
   // o que já foi dito e feito, pra uma conta nova continuar de onde a outra parou
-  function handoff(c: Convo, upTo: number, partial: Msg, why: string): string | null {
-    const describe = (m: Msg) => {
+  const describe = (m: Msg) => {
+    {
       if (m.role === "user") return `[usuário]\n${clip(m.text, HANDOFF_MSG_CHARS)}${m.attachments?.length ? `\n(anexos: ${m.attachments.map((a) => a.path).join(", ")})` : ""}`;
       const acts: string[] = [];
       let text = "";
@@ -314,7 +317,9 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
         else if (it.kind === "ask" && it.state === "denied") acts.push(`o usuário negou: ${it.tool} ${clip(it.detail, 120)}`);
       }
       return `[${m.review ? "revisão feita por outra conta" : "agente"}: ${d.accName(d.account(m.accountId || null))}${m.state === "error" ? ", terminou com erro" : m.state === "stopped" ? ", interrompido" : ""}]\n${clip(text.trim(), HANDOFF_MSG_CHARS)}${acts.length ? "\n" + acts.map((a) => `- ${a}`).join("\n") : ""}`;
-    };
+    }
+  };
+  function handoff(c: Convo, upTo: number, partial: Msg, why: string): string | null {
     const past = c.messages.slice(0, upTo).map(describe);
     if (partial.items?.some((i) => i.kind !== "note")) past.push(describe({ ...partial, state: "stopped" }) + "\n[esta resposta foi interrompida no meio; confira o estado dos arquivos antes de refazer algo]");
     if (!past.length) return null;
@@ -527,6 +532,96 @@ ${cur.trim() ? `Plano como está agora:\n\n${clip(cur, 8000)}` : "Ainda não há
     }
   }
 
+  // ---------- sala ----------
+  const provName = (p: string) => d.provName?.(p) || p;
+  // Vários agentes na mesma conversa. Depois de cada mensagem do usuário todos falam, um por vez e na ordem da sala,
+  // cada um lendo o que os outros já disseram. Em seguida vêm rodadas de reação: quem tem algo a acrescentar fala,
+  // quem não tem responde PASSO e a fala nem aparece. Acaba quando ninguém mais tem o que dizer ou no teto de rodadas.
+  const ROOM_ROUNDS = 3, ROOM_PASS = /^[\s"'*_\[(]*passo[\s"'*_\]).!]*$/i;
+  const roomSaid = (m: Msg) => (m.items || []).filter((i) => i.kind === "text").map((i: any) => i.text).join("\n").trim();
+  function roomPrompt(c: Convo, acc: Acc, upTo: number, round: number) {
+    const eu = d.accName(acc);
+    const colegas = [...new Set(c.room!.map((t) => (t.startsWith("pool:") ? provName(t.slice(5)) : d.accName(d.account(t)))))].filter((n) => n !== eu && !eu.startsWith(n + " ·"));
+    const past = c.messages.slice(0, upTo).filter((m) => m.role === "user" || m.state === "done" || m.state === "stopped").map(describe);
+    const keep: string[] = [];
+    let used = past[0]?.length || 0;
+    for (let i = past.length - 1; i > 0 && used + past[i].length < HANDOFF_CHARS; i--) { keep.unshift(past[i]); used += past[i].length; }
+    const skipped = past.length - 1 - keep.length;
+    return `<sala>
+Você é ${eu} e está numa sala de conversa com o usuário e outros agentes de código: ${colegas.join(", ") || "nenhum outro no momento"}. Todos leem a mesma conversa e trabalham na mesma pasta.
+
+Fale como colega numa conversa de trabalho, não como relatório: curto, direto, em português, sem repetir o que já foi dito e sem se apresentar. Responda ao usuário e aos colegas pelo nome quando fizer sentido. Concordou, diga em uma linha. Discordou, diga por quê. Viu algo que ninguém viu, acrescente. Quando houver trabalho a fazer, combinem quem pega o quê antes de mexer: diga a parte que você pega e não mexa na parte que outro já pegou.
+
+${round === 0 ? "O usuário acabou de falar. É a sua vez de responder a ele, levando em conta o que os colegas já disseram nesta rodada." : "Todos já falaram nesta rodada. É a sua vez de reagir ao que os colegas disseram."} Se você não tem nada de novo a acrescentar agora, responda somente a palavra PASSO.
+</sala>
+
+<conversa>
+${past[0] || ""}
+
+${skipped > 0 ? `[… ${skipped} mensagens do meio omitidas …]\n\n` : ""}${keep.join("\n\n")}
+</conversa>`;
+  }
+  async function runRoom(c: Convo, userIndex: number) {
+    const userMsg = c.messages[userIndex], userText = userMsg.text || "";
+    c.working = true;
+    touch(c);
+    let last: Msg | undefined, halted = false, failed = false;
+    try {
+      await d.prepare(c);
+      const b = c.brain ? await d.brainContext(userText, c.cwd.split("/").pop() || "") : null;
+      rounds: for (let round = 0; round < ROOM_ROUNDS; round++) {
+        let spoke = 0;
+        for (const target of c.room!) {
+          const acc = target.startsWith("pool:") ? d.pick(target.slice(5), []) : d.account(target);
+          const msg: Msg = { role: "assistant", at: Date.now(), items: [], state: "working", room: true, accountId: acc?.id };
+          if (!acc || !d.isReady(acc)) {
+            // quem está fora (sem login ou no limite) avisa uma vez por mensagem do usuário e a conversa segue sem ele
+            if (round === 0) { c.messages.push({ ...msg, accountId: acc?.id || (target.startsWith("pool:") ? undefined : target), state: "error", error: `${target.startsWith("pool:") ? provName(target.slice(5)) : d.accName(acc || d.account(target))} está fora desta rodada: sem conta pronta agora.`, endedAt: Date.now() }); touch(c); }
+            continue;
+          }
+          c.messages.push(msg);
+          c.accountId = acc.id;
+          c.provider = acc.provider;
+          touch(c);
+          const prompt = roomPrompt(c, acc, c.messages.length - 1, round);
+          msg.brain = round === 0 ? b?.notes : undefined;
+          msg.sent = { ask: userText.length, brain: round === 0 ? b?.text?.length || 0 : 0, handoff: prompt.length, resumed: false };
+          // tentativa 1 em diante não repete o aviso de "não pede permissão passo a passo": na sala ele sairia em toda fala
+          const r = await exec(c, msg, acc, prompt, round === 0 ? b?.text : undefined, null, c.messages.some((m) => m !== msg && m.room && m.accountId === acc.id) ? 1 : 0, round === 0 ? userMsg.attachments || [] : [], undefined, userText);
+          msg.endedAt = Date.now();
+          if (r.stopped) { msg.state = "stopped"; last = msg; halted = true; touch(c); break rounds; }
+          if (!r.ok) {
+            if (r.limit) d.markLimited(acc, r.err);
+            msg.state = "error";
+            msg.error = r.limit ? `${d.accName(acc)} bateu no limite e saiu desta rodada.` : r.err || "O agente terminou com erro.";
+            failed = true; touch(c); continue;
+          }
+          const worked = msg.items!.some((i) => i.kind === "cmd" || i.kind === "files" || i.kind === "tool");
+          if (ROOM_PASS.test(roomSaid(msg)) && !worked) { c.messages.splice(c.messages.indexOf(msg), 1); epochs.set(c.id, (epochs.get(c.id) || 0) + 1); touch(c); continue; } // a fala some: quem assiste recebe a conversa de novo
+          msg.state = "done"; last = msg; spoke++;
+          touch(c);
+        }
+        // sem ninguém para reagir (um só falou) ou sem nada novo na rodada: a sala se cala e espera o usuário
+        if (spoke === 0 || (round === 0 && spoke < 2)) break;
+      }
+    } catch (e: any) {
+      c.messages.push({ role: "assistant", at: Date.now(), endedAt: Date.now(), items: [], room: true, state: "error", error: String(e?.message || e) });
+      failed = true;
+    }
+    c.working = false;
+    c.waiting = false;
+    touch(c);
+    d.onIdle();
+    const next = !halted ? c.queue?.shift() : undefined;
+    if (c.queue && !c.queue.length) delete c.queue;
+    if (next) { const { text, at: _at, ...patch } = next; send(c, text, patch); }
+    if (!c.titled && last?.state === "done") {
+      c.titled = true;
+      d.makeTitle(c).then((t) => { if (t && convos.has(c.id)) { c.title = t; touch(c); } }).catch(() => {});
+    }
+    void failed;
+  }
+
   // Revisão cruzada: outra conta lê o que mudou nesta conversa, em modo só leitura, numa sessão
   // própria. A sessão nativa e a conta do autor não são tocadas; a resposta entra marcada como revisão.
   function review(c: Convo, o: { acc: Acc; patch: string; files: string[]; truncated: boolean; kind?: "security" }) {
@@ -593,7 +688,7 @@ Responda em português, com uma lista numerada do mais grave para o menos. Cada 
     // modelo e esforço são do provedor: trocou de provedor sem escolher de novo, volta ao padrão
     const provider = patch.target ? (patch.target.startsWith("pool:") ? patch.target.slice(5) : d.account(patch.target)?.provider) : c.provider;
     if (provider && c.provider && provider !== c.provider) { delete c.model; delete c.effort; }
-    if (patch.target) c.target = patch.target;
+    if (patch.target && !c.room) c.target = patch.target; // na sala quem fala é a sala, não o alvo do campo
     // null limpa a escolha (volta ao padrão da conta); sem o campo, fica como estava
     if (patch.model !== undefined) { if (patch.model) c.model = patch.model; else delete c.model; }
     if (patch.effort !== undefined) { if (patch.effort) c.effort = patch.effort; else delete c.effort; }
@@ -601,7 +696,7 @@ Responda em português, com uma lista numerada do mais grave para o menos. Cada 
     if (patch.mode) c.mode = patch.mode;
     if (typeof patch.brain === "boolean") c.brain = patch.brain;
     c.messages.push({ role: "user", at: Date.now(), text, attachments: patch.attachments?.length ? patch.attachments : undefined });
-    runTurn(c, c.messages.length - 1);
+    if (c.room) runRoom(c, c.messages.length - 1); else runTurn(c, c.messages.length - 1);
     return "sent" as const;
   }
 
@@ -658,14 +753,15 @@ Responda em português, com uma lista numerada do mais grave para o menos. Cada 
     return () => { closed = true; clearTimeout(timer); watchers.get(id)?.delete(kick); if (!watchers.get(id)?.size) watchers.delete(id); };
   }
 
-  function create(o: { prompt: string; target: string; cwd: string; mode: Mode; brain: boolean; worktree?: Convo["worktree"]; attachments?: Attachment[]; model?: string | null; effort?: string | null; plan?: boolean; by?: string }) {
+  function create(o: { prompt: string; target: string; cwd: string; mode: Mode; brain: boolean; worktree?: Convo["worktree"]; attachments?: Attachment[]; model?: string | null; effort?: string | null; plan?: boolean; by?: string; room?: string[] }) {
     const c: Convo = {
       id: crypto.randomUUID().slice(0, 8), title: (o.prompt.split("\n")[0] || o.attachments?.[0]?.name || "Conversa").slice(0, 80), cwd: o.cwd, target: o.target, mode: o.mode, brain: o.brain,
       accountId: null, provider: o.target.startsWith("pool:") ? o.target.slice(5) : d.account(o.target)?.provider || "", native: null,
-      messages: [], working: false, at: Date.now(), rev: 0, worktree: o.worktree, ...(o.by ? { by: o.by } : {}),
+      messages: [], working: false, at: Date.now(), rev: 0, worktree: o.worktree, ...(o.by ? { by: o.by } : {}), ...(o.room ? { room: o.room } : {}),
     };
     convos.set(c.id, c);
-    send(c, o.prompt, { attachments: o.attachments, model: o.model, effort: o.effort, plan: o.plan });
+    // modelo e esforço são de um provedor só: na sala cada agente fala no padrão da própria conta
+    send(c, o.prompt, o.room ? { attachments: o.attachments } : { attachments: o.attachments, model: o.model, effort: o.effort, plan: o.plan });
     return c;
   }
 

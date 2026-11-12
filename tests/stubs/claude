@@ -84,6 +84,11 @@ if (a.includes("--permission-prompt-tool")) {
   if (answer.behavior === "allow") writeFileSync("feito.txt", "ok");
   out({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "tu1", content: answer.behavior === "allow" ? "" : "negado", is_error: answer.behavior !== "allow" }] } });
   out({ type: "assistant", message: { id: "m2", content: [{ type: "text", text: answer.behavior === "allow" ? "permitido" : "negado" }] } });
+} else if (said.includes("<sala>")) {
+  // sala: fala uma vez por conversa e passa a vez nas rodadas seguintes; SALA-TEIMA faz reagir uma vez aos colegas
+  const eu = said.match(/Você é (.+?) e está numa sala/)?.[1] || "?", conversa = (said.split("<conversa>")[1] || "").split("[usuário]").pop()!, minhas = conversa.split(`[agente: ${eu}]`).length - 1, antes = (conversa.match(/^\[agente: /gm) || []).length;
+  const text = minhas === 0 ? `sala: ${eu} fala depois de ${antes}` : minhas === 1 && conversa.includes("SALA-TEIMA") ? `sala: ${eu} reage` : "PASSO";
+  out({ type: "assistant", message: { id: "s1", content: [{ type: "text", text }] } });
 } else if (said.includes("Você é o supervisor de uma equipe")) {
   // planejador do supervisor: duas tarefas independentes, no formato pedido
   out({ type: "assistant", message: { id: "p1", content: [{ type: "text", text: "Dá para separar em duas frentes que não se tocam.\n\n```json\n" + JSON.stringify({ tarefas: [{ titulo: "Exportação de pedidos", pedido: "CRIA-ARQUIVO da exportação de pedidos" }, { titulo: "Importação de clientes", pedido: "CRIA-ARQUIVO da importação de clientes" }] }) + "\n```" }] } });
