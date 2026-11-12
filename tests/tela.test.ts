@@ -829,6 +829,39 @@ describe.skipIf(!CHROME)("tela", () => {
     await page(`closePops(); picked.clear(); store.set("targets", "[]"); paintComposer();`);
   }, SLOW);
 
+  test("anexos na caixa de pedido: imagem pesada é enxugada antes de subir, texto grande colado vira anexo e o curto segue no campo", async () => {
+    await page(`go({ type: "home" }); attached = []; paintAtts(); document.querySelector("#prompt").value = "";`);
+    // uma imagem de ruído passa do peso que sobe direto: tem que chegar menor, em JPEG, e aparecer como miniatura
+    const img = await page(`const c = Object.assign(document.createElement("canvas"), { width: 3000, height: 2000 }), x = c.getContext("2d"), d = x.createImageData(3000, 2000);
+      let h = 2463534242; // ruído de semente fixa: não comprime, então o PNG passa do peso
+      for (let i = 0; i < d.data.length; i++) { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; d.data[i] = i % 4 === 3 ? 255 : h & 255; }
+      x.putImageData(d, 0, 0);
+      const cru = await new Promise((r) => c.toBlob(r, "image/png")), dt = new DataTransfer();
+      dt.items.add(new File([cru], "image.png", { type: "image/png" }));
+      document.querySelector("#prompt").dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      const subindo = !!document.querySelector("#atts .att.subindo");
+      for (let i = 0; i < 80 && (!attached.length || attached.some((a) => a.pending)); i++) await new Promise((r) => setTimeout(r, 100));
+      const a = attached[0], peso = +(await fetch(attUrl(a))).headers.get("content-length");
+      return { pesado: cru.size > IMG_PESO, subindo, mime: a.mime, image: a.image, menor: peso < cru.size && peso <= IMG_PESO * 1.2, miniatura: !!document.querySelector("#atts .att.foto img"), remover: !!document.querySelector("#atts .att.foto [data-rm-att]") };`);
+    expect(img).toEqual({ pesado: true, subindo: true, mime: "image/jpeg", image: true, menor: true, miniatura: true, remover: true });
+    // texto longo: vira cartão "Texto colado" e o campo fica vazio; texto curto cola normalmente
+    const colado = await page(`const longo = Array.from({ length: 90 }, (_, i) => "linha " + i + " da reunião").join("\\n"), dt = new DataTransfer();
+      dt.setData("text/plain", longo);
+      const ev = new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true });
+      document.querySelector("#prompt").dispatchEvent(ev);
+      for (let i = 0; i < 60 && (attached.length < 2 || attached.some((a) => a.pending)); i++) await new Promise((r) => setTimeout(r, 100));
+      const a = attached[1], texto = await (await fetch(attUrl(a))).text(), curto = new DataTransfer();
+      curto.setData("text/plain", "texto curto");
+      const ev2 = new ClipboardEvent("paste", { clipboardData: curto, bubbles: true, cancelable: true });
+      document.querySelector("#prompt").dispatchEvent(ev2);
+      return { segurou: ev.defaultPrevented, campo: document.querySelector("#prompt").value, inteiro: texto === longo, mime: a.mime.split(";")[0], cartao: document.querySelector("#atts .att.texto")?.innerText.includes("TEXTO COLADO") || document.querySelector("#atts .att.texto")?.innerText.includes("Texto colado"), curtoLivre: !ev2.defaultPrevented };`);
+    expect(colado).toEqual({ segurou: true, campo: "", inteiro: true, mime: "text/plain", cartao: true, curtoLivre: true });
+    // o × tira o anexo
+    await page(`document.querySelector("#atts [data-rm-att='0']").click();`);
+    expect(await page(`return [attached.length, !!document.querySelector("#atts .att.foto")]`)).toEqual([1, false]);
+    await page(`attached = []; paintAtts();`);
+  }, SLOW);
+
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {
     await page(`go({ type: "home" });`);
     const campo = await page(`const c = document.querySelector("#v-home canvas.campo"), v = document.querySelector("#v-home");

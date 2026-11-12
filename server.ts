@@ -1102,15 +1102,18 @@ const server = Bun.serve({
         return json({ kind: "chat", id: convos.create({ prompt, target: targets[0], cwd: wt?.cwd || cwd, mode: asMode(body.mode), brain: body.brain !== false, worktree: wt && { main: wt.main, path: wt.path, branch: wt.branch }, attachments: asAttachments(body.attachments), model: asModel(body.model), effort: asEffort(body.effort), plan: body.plan === true }).id });
       }
       const ctx = prompt && body.brain !== false ? await brain.context(prompt, cwd.split("/").pop()) : null;
+      // em paralelo e no terminal o agente não recebe o anexo como imagem: vai o caminho do arquivo no fim do pedido, e ele abre de lá
+      const anexos = asAttachments(body.attachments);
+      const comAnexos = anexos.length ? `${prompt}\n\nArquivos anexados a este pedido (abra cada um antes de responder):\n${anexos.map((a) => `- ${a.path}`).join("\n")}` : prompt;
       if (targets.length > 1) {
         if (!prompt) return fail("escreva o pedido para disparar em paralelo");
-        return json({ kind: "run", id: (await startRun(prompt, targets, cwd, asMode(body.mode) !== "read", ctx, !!body.isolate)).id });
+        return json({ kind: "run", id: (await startRun(comAnexos, targets, cwd, asMode(body.mode) !== "read", ctx, !!body.isolate)).id });
       }
       const t = targets[0];
       const acc = t.startsWith("pool:") ? pickAccount(t.slice(5), []) : account(t);
       if (!acc) return fail("nenhuma conta pronta para esse pedido");
       try {
-        const s = startSession(acc, "chat", cwd, { prompt, ctx: ctx?.text, brain: ctx?.notes, title: prompt.split("\n")[0].slice(0, 80) || "Sessão", cols: body.cols, rows: body.rows });
+        const s = startSession(acc, "chat", cwd, { prompt: comAnexos, ctx: ctx?.text, brain: ctx?.notes, title: prompt.split("\n")[0].slice(0, 80) || "Sessão", cols: body.cols, rows: body.rows });
         return json({ kind: "session", id: s.id });
       } catch (e: any) { return fail(e.message); }
     }
