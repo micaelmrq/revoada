@@ -198,7 +198,15 @@
   #planDlg { width: min(720px, 92vw); max-height: 86vh; padding: 0; display: none; flex-direction: column; } #planDlg[open] { display: flex; }
   #planBody { padding: 18px 22px 22px; overflow-y: auto; }
   #phoneDlg { width: min(560px, 92vw); } #phoneBody { display: grid; gap: 6px; padding-top: 12px; }
-  #appsDlg { width: min(760px, 94vw); max-height: 86vh; overflow-y: auto; } #appsBody { padding-top: 14px; }
+  #appsDlg { width: min(760px, 94vw); height: min(720px, 86vh); max-height: 86vh; overflow-y: auto; } #appsBody { padding-top: 6px; }
+  .apps-p[hidden] { display: none; }
+  .apps-abas { display: flex; gap: 22px; border-bottom: 1px solid var(--fio); margin-bottom: 16px; position: sticky; top: 0; background: var(--fundo); z-index: 1; }
+  .apps-abas button { padding: 10px 0 11px; color: var(--tinta3); font-size: 14px; display: inline-flex; align-items: center; gap: 7px; box-shadow: inset 0 -1.5px 0 transparent; transition: color .12s ease; }
+  .apps-abas button:hover { color: var(--tinta); } .apps-abas button[aria-selected="true"] { color: var(--tinta); box-shadow: inset 0 -1.5px 0 var(--tinta); }
+  .apps-abas .num { font-size: 12px; color: var(--tinta3); font-variant-numeric: tabular-nums; }
+  /* conectados em duas colunas: vinte e tantos apps cabem numa tela sem rolar */
+  .apps-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+  @media (max-width: 700px) { .apps-l { grid-template-columns: minmax(0, 1fr); } }
   .apps-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
   .app-c { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio2); min-width: 0; }
   .selo.de-app svg { width: 58%; height: 58%; fill: currentColor; display: block; }
@@ -239,6 +247,7 @@
   .seg { display: inline-flex; background: var(--sup); border-radius: 10px; padding: 3px; }
   .seg button { padding: 5px 13px; border-radius: 8px; color: var(--tinta2); font-size: 13px; }
   .seg button.on { background: var(--sup2); color: var(--tinta); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fio2); }
+  #dica { position: fixed; z-index: 30; pointer-events: none; background: var(--sup2); color: var(--tinta); box-shadow: 0 0 0 1px var(--fio2), 0 6px 18px rgba(0, 0, 0, .35); padding: 5px 9px; border-radius: 7px; font-size: 12.5px; line-height: 1.4; max-width: 280px; white-space: pre-line; }
   #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--botao); color: var(--sobre-botao); padding: 10px 18px; border-radius: 999px; display: none; font-size: 13.5px; z-index: 9; max-width: 80vw; }
 
   /* palco */
@@ -633,7 +642,7 @@
 <aside>
   <div class="lat-topo"><div class="marca"><span data-logo></span>revoada</div>
     <button class="ic-b" id="findBtn" data-ic="busca" title="Buscar conversas (⌘K)" aria-label="Buscar conversas"></button>
-    <button class="ic-b" data-go="home" data-ic="nova" title="Novo chat (⌘N)" aria-label="Novo chat"></button></div>
+    <button class="ic-b" data-go="home" data-ic="nova" title="Nova sala (⌘N)" aria-label="Nova sala"></button></div>
   <label class="find" data-ic="busca"><input id="tq" placeholder="Buscar conversas" autocomplete="off" spellcheck="false" aria-label="Buscar conversas"><kbd>esc</kbd></label>
   <div class="rolagem">
     <div class="nav">
@@ -822,6 +831,7 @@
 <dialog id="phoneDlg"><header><div><h2>Acompanhar pelo celular</h2><small>Uma página leve, em outro aparelho, com o que os agentes estão fazendo.</small></div><button class="ic-b" id="phoneClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="phoneBody"></div></dialog>
 <dialog id="appsDlg"><header><div><h2>Apps conectados</h2><small>Skills e servidores MCP da conta padrão de cada provedor, e o que as outras contas recebem.</small></div><button class="ic-b" id="appsClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="appsBody"></div></dialog>
 <div id="toast" role="status"></div>
+<div id="dica" role="tooltip" hidden></div>
 
 <script src="/vendor/xterm.js"></script>
 <script src="/vendor/addon-fit.js"></script>
@@ -1136,8 +1146,8 @@ function renderThreads() {
     const side = sideThreads(all);
     // Salas: as conversas, da mais recente para a mais antiga
     const SHOWN = 8, wide = expanded.has("salas");
-    html = `<div class="grupo">Salas<button data-go-home title="Novo chat" aria-label="Novo chat">${ic("mais")}</button></div>`
-      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma conversa ainda</button>`)
+    html = `<div class="grupo">Salas</div>` // quem começa uma sala é o botão do topo (⌘N); um segundo + aqui fazia a mesma coisa com outro nome
+      + (side.length ? (wide ? side : side.slice(0, SHOWN)).map((t) => threadRow(t, "")).join("") : `<button class="item more" data-go-home>Nenhuma sala ainda. Comece uma.</button>`)
       + (side.length > SHOWN ? `<button class="item more" data-more="salas">${wide ? "Mostrar menos" : "Mostrar mais"}</button>` : "");
     const shelved = archivedThreads(all), showShelved = expanded.has("arquivadas");
     if (shelved.length) html += `<button class="item more" data-more="arquivadas">${showShelved ? "Esconder arquivadas" : `Arquivadas ${shelved.length}`}</button>` + (showShelved ? shelved.map((t) => threadRow(t, "")).join("") : "");
@@ -1156,7 +1166,7 @@ function renderThreads() {
       const real = dir !== LOOSE && !dir.startsWith(COPIES);
       const open = openDirs.has(dir), more = expanded.has(dir), shown = more ? list : list.slice(0, 5), name = dir === LOOSE ? "Avulsas" : dir.startsWith(COPIES) ? dir.slice(COPIES.length) : base(dir);
       html += `<div class="org-cab ${dir === here ? "on" : ""}"><button data-dir="${esc(dir)}" aria-expanded="${open}" title="${esc(real ? dir : name)}${dir === cwd() ? "\nPasta de trabalho do campo de pedido" : ""}"><span class="chev">${ic("seta")}</span><span class="sigla">${esc(name[0] || "/")}</span><span class="t">${esc(name)}</span>${open || !list.length ? "" : `<span class="qtd num">${list.length}</span>`}</button>
-          ${real ? `<button class="mais" data-newin="${esc(dir)}" title="Novo chat em ${esc(name)}" aria-label="Novo chat em ${esc(name)}">${ic("mais")}</button>` : ""}</div>`
+          ${real ? `<button class="mais" data-newin="${esc(dir)}" title="Nova sala em ${esc(name)}" aria-label="Nova sala em ${esc(name)}">${ic("mais")}</button>` : ""}</div>`
         + (open ? (shown.map((t) => threadRow(t, "thread")).join("") || `<button class="item thread more" data-newin="${esc(dir)}">Nenhuma conversa aqui ainda</button>`)
           + (list.length > 5 ? `<button class="item thread more" data-more="${esc(dir)}">${more ? "Mostrar menos" : "Mostrar mais"}</button>` : "") : "");
     }
@@ -1360,19 +1370,22 @@ function paintApps(t) {
     + (!achados ? `<div class="calm">Buscando no registro.</div>` : achados.erro ? `<div class="calm">${esc(achados.erro)}</div>`
       : (achados.achados.length ? `<div class="apps-g">${achados.achados.map((a) => `<div class="app-c">${appSelo(a.name)}<span><b title="${esc(a.registro)}">${esc(a.nome)}</b><span title="${esc(a.o_que)}">${esc(a.onde)}${a.o_que ? ` · ${esc(a.o_que)}` : ""}</span></span>${mcp.includes(a.name) ? `<i class="tag mute">instalado</i>` : botao(`data-app-reg="${esc(a.registro)}"`, a.registro, "Instalar")}</div>`).join("")}</div>` : `<div class="calm">Nada instalável com esse nome no registro.</div>`)
         + (achados.fora ? `<small class="app-aviso">${plural(achados.fora, "resultado pede", "resultados pedem")} chave ou configuração própria e ${achados.fora === 1 ? "ficou" : "ficaram"} de fora. Dá para instalar por Outro endereço.</small>` : ""));
-  const adicionar = !t.catalogo ? "" : `<span class="label" style="padding:18px 0 8px">Adicionar app</span>`
+  const adicionar = !t.catalogo ? "" : ``
     + (clis.length ? `<div class="app-busca">${ic("busca")}<input type="text" id="appBusca" placeholder="Buscar app pelo nome" aria-label="Buscar app" autocomplete="off" spellcheck="false"></div>
       <div class="apps-areas"><button class="chip ${appsArea ? "" : "on"}" data-app-area="">Todos</button>${(t.areas || []).map(([id, nome]) => `<button class="chip ${appsArea === id ? "on" : ""}" data-app-area="${id}">${esc(nome)}</button>`).join("")}</div>` : `<div class="calm">Instale o Claude Code ou o Codex para adicionar apps por aqui.</div>`)
     + (clis.length ? (faltam.length ? `<div class="apps-g">${faltam.map(cartao).join("")}</div>` : `<div class="calm">${q ? "Nenhum app do catálogo com esse nome." : "Tudo desta lista já está instalado."}</div>`) + doRegistro : "")
     + (clis.length ? `<div class="app-outro"><span class="label">Outro endereço</span><div class="e-linha"><input type="text" id="appNome" placeholder="nome-do-app" aria-label="Nome do app" autocomplete="off" spellcheck="false"><input type="text" id="appEndereco" placeholder="Endereço https do servidor MCP, ou o comando que o inicia" aria-label="Endereço ou comando" autocomplete="off" spellcheck="false">${botao("data-app-outro", "outro", "Instalar")}</div>
       ${clis.length > 1 ? `<div class="apps-em"><span>Instalar em</span>${clis.map((p) => `<button class="chip ${appsEm.has(p) ? "on" : ""}" data-app-em="${p}" aria-pressed="${appsEm.has(p)}">${appsEm.has(p) ? ic("certo") : ""}${CLI_NOME[p]}</button>`).join("")}</div>` : ""}
       <small>O app entra na conta padrão, pelo comando oficial de cada agente. Servidor com login próprio abre o navegador para você entrar. Nas outras contas ele vai junto quando a chave abaixo está ligada, e cada conta pede o próprio login na primeira conversa.</small></div>` : "");
-  $("appsBody").innerHTML = `<span class="label" style="padding-bottom:8px">Servidores MCP</span>`
-    + (mcp.length ? `<div class="apps-l">${mcp.map(linha).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta padrão.</div>`)
-    + adicionar
+  // duas abas: o que já está conectado e o que dá para adicionar. Com muitos apps, uma lista só empurrava o "Adicionar" para o fim da rolagem
+  const aba = adicionar && appsAba === "adicionar" ? "adicionar" : "conectados";
+  const abas = adicionar ? `<div class="apps-abas" role="tablist"><button role="tab" aria-selected="${aba === "conectados"}" data-apps-aba="conectados">Conectados<span class="num">${mcp.length}</span></button><button role="tab" aria-selected="${aba === "adicionar"}" data-apps-aba="adicionar">Adicionar</button></div>` : "";
+  // as duas abas ficam na página e só uma aparece: o que foi digitado na outra não se perde
+  $("appsBody").innerHTML = abas + (adicionar ? `<div class="apps-p" ${aba === "adicionar" ? "" : "hidden"}>${adicionar}</div>` : "") + (`<div class="apps-p" ${aba === "conectados" ? "" : "hidden"}><span class="label" style="padding-bottom:8px">Servidores MCP</span>`
+    + (mcp.length ? `<div class="apps-l">${mcp.map(linha).join("")}</div>` : `<div class="calm">Nenhum servidor MCP configurado na conta da máquina.${adicionar ? ` <button class="link" data-apps-aba="adicionar">Adicionar um app</button>` : ""}</div>`)
     + `<span class="label" style="padding:18px 0 8px">Skills</span><div class="calm">${Object.entries(t.skills).filter(([, n]) => n).map(([p, n]) => `${esc(prov(p)?.name || p)}: ${n}`).join(" · ") || "Nenhuma skill instalada na conta padrão."}</div>`
-    + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta padrão</button></div>`
-    + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div>`;
+    + `<div class="toggle"><button class="switch ${t.on ? "on" : ""}" data-tools="${t.on ? 0 : 1}"><b></b>Usar nas outras contas o que está instalado na conta da máquina</button></div>`
+    + `<div class="end"><span></span><span><button class="btn line" data-apps-acc>Ver em Contas</button></span></div></div>`);
   for (const [id, valor, foco] of digitado) if ($(id)) { $(id).value = id === "appBusca" ? appsBusca : valor; if (foco) $(id).focus(); }
 }
 // a busca filtra o catálogo na hora e, um instante depois de parar de digitar, consulta o registro público
@@ -1405,6 +1418,7 @@ async function appsInstala(body, marca, nome) {
   appsOcupado = "";
   if (!r) return paintApps(toolsInfo);
   const ok = Object.keys(r.results).filter((p) => r.results[p].ok), ruim = Object.values(r.results).filter((x) => !x.ok).map((x) => x.erro);
+  if (ok.length) appsAba = "conectados"; // instalou: mostra o app na lista, com o botão de entrar quando precisa
   toast([`${nome || r.name} instalado ${noCli(ok)}.`, ok.some((p) => r.results[p].login) ? "O navegador abriu para o login." : "", ...ruim].filter(Boolean).join(" "));
   if (marca === "outro") for (const id of ["appNome", "appEndereco"]) $(id).value = "";
   if (marca === appsChave) { appsChave = ""; if ($("appChave")) $("appChave").value = ""; }
@@ -1420,7 +1434,10 @@ $("appsBody").onkeydown = (e) => {
 };
 // com acento em composição (til, agudo) a repintura trocaria o campo no meio da letra: espera a letra fechar
 $("appsBody").oninput = $("appsBody").oncompositionend = (e) => { if (e.target.id !== "appBusca" || e.isComposing) return; appsBusca = e.target.value; paintApps(toolsInfo); appsProcura(); };
+let appsAba = "conectados"; // aba aberta na janela de apps
 $("appsBody").onclick = async (e) => {
+  const troca = e.target.closest("[data-apps-aba]");
+  if (troca) { appsAba = troca.dataset.appsAba; paintApps(toolsInfo); if (appsAba === "adicionar") $("appBusca")?.focus(); return; }
   const b = e.target.closest("button"); if (!b) return;
   const d = b.dataset;
   if ("appsAcc" in d) { $("appsDlg").close(); return go({ type: "accounts", tools: true }); }
@@ -1863,6 +1880,29 @@ document.addEventListener("keydown", (e) => {
   const b = open.querySelector(`:scope > .opt[data-key="${e.key}"]`); if (!b) return;
   e.preventDefault(); b.click();
 });
+
+// ---------- dicas ----------
+// A dica nativa (atributo title) aparece longe do botão dentro do app de Mac. Esta guarda o texto, tira o title e mostra a
+// dica colada ao elemento, depois de uma pausa. O nome acessível continua no aria-label de cada botão.
+(() => {
+  const el = $("dica"); let espera = 0, dono = null;
+  const some = () => { clearTimeout(espera); el.hidden = true; dono = null; };
+  const mostra = (alvo) => {
+    const texto = alvo.dataset.dica; if (!texto || !alvo.isConnected) return;
+    el.textContent = texto; el.hidden = false;
+    const r = alvo.getBoundingClientRect(), d = el.getBoundingClientRect(), embaixo = r.bottom + 8 + d.height < innerHeight;
+    el.style.left = Math.round(Math.max(8, Math.min(innerWidth - d.width - 8, r.left + r.width / 2 - d.width / 2))) + "px";
+    el.style.top = Math.round(embaixo ? r.bottom + 8 : r.top - d.height - 8) + "px";
+  };
+  document.addEventListener("mouseover", (e) => {
+    const alvo = e.target.closest?.("[title], [data-dica]"); if (alvo === dono) return;
+    some(); if (!alvo) return;
+    if (alvo.hasAttribute("title")) { const t = alvo.getAttribute("title"); alvo.removeAttribute("title"); if (t) { alvo.dataset.dica = t; if (!alvo.hasAttribute("aria-label") && !alvo.textContent.trim()) alvo.setAttribute("aria-label", t); } }
+    dono = alvo; espera = setTimeout(() => mostra(alvo), 450);
+  });
+  for (const ev of ["mousedown", "keydown", "scroll", "blur"]) addEventListener(ev, some, true);
+  document.addEventListener("mouseleave", some);
+})();
 
 // ---------- voz ----------
 // Com a voz ligada, cada resposta que termina é lida em voz alta; na sala cada agente tem a sua voz e diz o nome antes.

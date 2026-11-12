@@ -759,7 +759,11 @@ describe.skipIf(!CHROME)("tela", () => {
   test("apps conectados: instalar do catálogo, entrar, instalar um endereço colado e remover, tudo pela janela", async () => {
     await page(`go({ type: "home" }); window.confirm = () => true; document.querySelector("#appsPill").click();`);
     await until(`document.querySelector("#appsDlg").open && document.querySelector('#appsBody [data-app-poe="linear"]')`);
-    const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Adicionar app") && b.innerText.includes("Outro endereço"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
+    // a janela abre em Conectados; o catálogo fica na aba Adicionar, e instalar algo volta para Conectados
+    const adicionarAba = () => page(`document.querySelector('#appsBody [data-apps-aba="adicionar"]').click();`);
+    expect(await page(`return [...document.querySelectorAll("#appsBody .apps-abas [role=tab]")].map((b) => [b.innerText.replace(/\\s+/g, " ").trim(), b.getAttribute("aria-selected")])`)).toEqual([["Conectados 0", "true"], ["Adicionar", "false"]]);
+    await adicionarAba();
+    const inicio = await page(`const b = document.querySelector("#appsBody"); return { secao: b.innerText.includes("Outro endereço") && !b.innerText.includes("Usar nas outras contas"), catalogo: [...b.querySelectorAll("[data-app-poe]")].map((x) => x.dataset.appPoe), marca: !!b.querySelector('[data-app-poe="linear"]').closest(".app-c").querySelector(".de-app svg"), agentes: [...b.querySelectorAll("[data-app-em]")].map((x) => x.textContent + ":" + x.getAttribute("aria-pressed")), larga: b.scrollWidth > b.clientWidth };`);
     expect({ ...inicio, catalogo: inicio.catalogo.length >= 25 && ["linear", "notion", "figma", "cloudflare", "atlassian", "trello"].every((x) => inicio.catalogo.includes(x)) }).toEqual({ secao: true, catalogo: true, marca: true, agentes: ["Claude:true", "Codex:true"], larga: false });
     // categoria e busca filtram o catálogo; a busca também consulta o registro público (aqui, o de mentira)
     await page(`document.querySelector('#appsBody [data-app-area="design"]').click();`);
@@ -773,6 +777,8 @@ describe.skipIf(!CHROME)("tela", () => {
     expect(await page(`return [document.querySelector('#appsBody [data-app="planilhas"] .app-n').innerText.replace(/\\s+/g, " "), document.querySelector("#toast").textContent]`)).toEqual(["planilhas mcp.exemplo.dev", "planilhas instalado no Claude e no Codex."]);
     await page(`document.querySelector('#appsBody [data-app-tira="planilhas"]').click();`);
     await until(`!document.querySelector('#appsBody [data-app="planilhas"]')`);
+    expect(await page(`return document.querySelector('#appsBody [data-apps-aba="conectados"]').getAttribute("aria-selected")`)).toBe("true");
+    await adicionarAba();
     await page(`const q = document.querySelector("#appBusca"); q.value = "git"; q.dispatchEvent(new InputEvent("input", { bubbles: true }));`);
     // app que pede chave: o cartão abre o campo, e sem chave o servidor recusa com a frase
     await page(`document.querySelector('#appsBody [data-app-chave="github"]').click();`);
