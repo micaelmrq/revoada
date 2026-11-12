@@ -1,7 +1,7 @@
 // Fluxos principais, de ponta a ponta: sobe o servidor de verdade numa pasta de usuário
 // descartável, com CLIs de mentira no PATH (tests/stubs), e conversa com ele pela API.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
@@ -182,6 +182,12 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(items[0].text).toContain("olá mundo");
     const acc = (await get("state")).accounts.find((a: any) => a.id === "claude-padrao");
     expect(acc.usage.find((u: any) => u.key === "five_hour").pct).toBe(42);
+    // resposta que informa só uma janela não apaga as outras: elas continuam com a leitura anterior, cada uma com a sua hora
+    const antes = acc.usage.find((u: any) => u.key === "five_hour").at;
+    await idle(await chat("claude-padrao", "COTA-PARCIAL"));
+    const depois = (await get("state")).accounts.find((a: any) => a.id === "claude-padrao").usage;
+    expect(depois.map((u: any) => [u.key, u.pct])).toEqual([["five_hour", 42], ["seven_day", 10], ["seven_day_overage_included", 88]]);
+    expect([depois[0].at === antes, depois[2].at >= antes, depois.every((u: any) => typeof u.at === "number")]).toEqual([true, true, true]);
     const titled = await until(async () => { const x = await get(`convos/${c.id}`); return x.title === "Título de teste" && x; });
     expect(titled.titled).toBe(true);
   }, SLOW);
@@ -233,6 +239,24 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [{ ...att, path: "/etc/passwd" }] })))).toContain("imagens=0");
   }, SLOW);
 
+  test("anexo grande entra: um arquivo de 60 MB sobe inteiro, e o vazio é recusado", async () => {
+    const corpo = new Uint8Array(60_000_000); corpo[0] = 37; corpo[corpo.length - 1] = 10;
+    const up = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "application/pdf", "x-name": "Design.pdf" }, body: corpo });
+    const att = await up.json() as any;
+    expect([up.status, att.name, att.image, statSync(att.path).size]).toEqual([200, "Design.pdf", false, 60_000_000]);
+    rmSync(att.path, { force: true });
+    const vazio = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": "nada.txt" }, body: "" });
+    expect((await vazio.json() as any).error).toBe("arquivo vazio");
+  }, SLOW);
+
+  test("texto colado chega ao agente como texto, com as linhas, e arquivo comum segue como caminho", async () => {
+    const sobe = async (nome: string, corpo: string) => (await (await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": nome }, body: corpo })).json()) as any;
+    const colado = await sobe("texto-colado-1731380000000.txt", "linha um\nlinha dois\n\nlinha quatro"), comum = await sobe("ata.txt", "a\nb\nc\nd\ne\nf\ng");
+    expect(texts(await idle(await chat("claude-padrao", "leia", { attachments: [colado] })))).toContain("colado=4;");
+    // arquivo com outro nome não é despejado no pedido: o agente abre pelo caminho
+    expect(texts(await idle(await chat("claude-padrao", "leia", { attachments: [comum] })))).toContain("colado=0;");
+  }, SLOW);
+
   test("sala: os agentes falam um por vez na mesma conversa, leem uns aos outros, e quem não tem o que dizer passa", async () => {
     const falas = (c: any) => c.messages.filter((m: any) => m.role === "assistant").map((m: any) => m.items.filter((x: any) => x.kind === "text").map((x: any) => x.text).join(" "));
     const colegaId = (await post("accounts", { provider: "codex", label: "da-sala" })).id; // a conta padrão do Codex de mentira vive no limite
@@ -251,13 +275,33 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     c = await idle(r.id);
     expect(falas(c).slice(2).map((t: string) => t.replace(/ · .+? (fala|reage).*/, " $1"))).toEqual(["sala: Claude fala", "sala: Codex fala", "sala: Claude reage", "sala: Codex reage"]);
     expect(c.messages.filter((m: any) => m.role === "user").length).toBe(2);
+    // falar no meio: a sala não termina as rodadas antes de ouvir. Com SALA-TEIMA seriam quatro falas; a mensagem nova entra antes disso
+    await post(`convos/${r.id}/send`, { text: "de novo SALA-TEIMA" });
+    expect(await post(`convos/${r.id}/send`, { text: "espera, mudei de ideia" })).toMatchObject({ queued: true });
+    c = await idle(r.id);
+    const papeis = c.messages.map((m: any) => m.role), terceira = papeis.lastIndexOf("user"), segunda = papeis.lastIndexOf("user", terceira - 1);
+    expect(c.messages[terceira].text).toBe("espera, mudei de ideia");
+    expect(terceira - segunda - 1).toBeLessThan(4);
+    expect(c.queue).toBeUndefined();
+    // pôr e tirar gente no meio: a lista vale para a próxima mensagem; com um só, deixa de ser sala
+    expect((await post(`convos/${r.id}/room`, { room: [colegaId, "claude-padrao", "conta-que-nao-existe"] })).room).toEqual([colegaId, "claude-padrao"]);
+    expect((await api(`convos/${r.id}/room`, "POST", { room: [] })).body.error).toContain("pelo menos um agente");
+    expect((await post(`convos/${r.id}/room`, { room: [colegaId] })).room).toBe(null);
+    const sozinha = await get(`convos/${r.id}`);
+    expect([sozinha.room, sozinha.target]).toEqual([undefined, colegaId]);
   }, SLOW);
 
-  test("sala: menos de dois agentes ou mais que o teto é recusado, e conta fora da rodada avisa sem travar os outros", async () => {
+  test("sala: menos de dois agentes é recusado, não há teto, e conta fora da rodada avisa sem travar os outros", async () => {
     expect((await api("chat", "POST", { prompt: "x", targets: ["claude-padrao", "claude-padrao"], room: true, cwd: HOME })).body.error).toContain("pelo menos dois");
     const s = await get("state"), outra = s.accounts.find((a: any) => a.provider === "codex" && a.id !== "codex-padrao" && a.status.ok).id;
-    const muitos = ["claude-padrao", "codex-padrao", outra, "pool:claude", "pool:codex", "pool:gemini", "pool:grok"];
-    expect((await api("chat", "POST", { prompt: "x", targets: muitos, room: true, cwd: HOME })).body.error).toContain("até 6 agentes");
+    // sem teto de agentes: sete alvos entram, e o rodízio não repete conta que já está na sala pelo nome
+    const muitos = ["claude-padrao", "pool:claude", outra, "pool:codex", "codex-padrao", "pool:gemini", "pool:grok"];
+    const cheia = await post("chat", { prompt: "todo mundo", targets: muitos, room: true, cwd: HOME, brain: false, mode: "read" });
+    const todos = await idle(cheia.id), quem = todos.messages.filter((m: any) => m.role === "assistant" && m.state === "done").map((m: any) => m.accountId);
+    expect(todos.room).toEqual(muitos);
+    expect(quem.filter((id: string) => id === "claude-padrao").length).toBe(1);
+    expect(new Set(quem).size).toBe(quem.length);
+    expect(quem).toContain(outra);
     // o Gemini não tem conta pronta no teste e a conta padrão do Codex está no limite: os dois avisam e o resto conversa
     const r = await post("chat", { prompt: "sigam sem eles", targets: ["claude-padrao", "pool:gemini", "codex-padrao", outra], room: true, cwd: HOME, brain: false, mode: "read" });
     const c = await idle(r.id), respostas = c.messages.filter((m: any) => m.role === "assistant");

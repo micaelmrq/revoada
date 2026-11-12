@@ -75,7 +75,8 @@ const ANSWER = `Quase. Às 14:42 oito contas estão criadas e a última (Oka) es
 \`\`\``;
 const nap = (ms: number) => new Promise((r) => setTimeout(r, ms));
 out({ type: "system", subtype: "init", session_id: "s-claude", model: MODEL });
-out({ type: "rate_limit_event", rate_limit_info: { unifiedWindows: { five_hour: { utilization: 0.42, resetsAt: now + 3600 }, seven_day: { utilization: 0.1, resetsAt: now + 86400 } } } });
+// COTA-PARCIAL: como o CLI de verdade às vezes faz, informa só uma das janelas (aqui a do Fable)
+out({ type: "rate_limit_event", rate_limit_info: { unifiedWindows: said.includes("COTA-PARCIAL") ? { seven_day_overage_included: { utilization: 0.88, resetsAt: now + 86400 } } : { five_hour: { utilization: 0.42, resetsAt: now + 3600 }, seven_day: { utilization: 0.1, resetsAt: now + 86400 } } } });
 if (a.includes("--permission-prompt-tool")) {
   // "SO-LEITURA" no pedido: o agente quer só listar; o resto quer criar arquivo
   const input = { command: said.includes("SO-LEITURA") ? "ls -la | head -5" : RICH ? LONG : "touch feito.txt" };
@@ -108,7 +109,7 @@ if (a.includes("--permission-prompt-tool")) {
 } else {
   out({ type: "stream_event", event: { type: "message_start", message: { id: "m1" } } });
   for (const t of ["olá ", "mundo"]) out({ type: "stream_event", event: { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: t } } });
-  out({ type: "assistant", message: { id: "m1", content: [{ type: "text", text: `olá mundo; imagens=${blocks.filter((b) => b.type === "image").length}; retomada=${a.includes("--resume")}; modelo=${flag("--model")}; esforco=${flag("--effort")}; plano=${planAt ? "instruido" : "nao"}; viu-plano=${(sys + said).includes("Plano como está agora")}; revisor=${said.includes("<diff>") && said.includes("novo.txt")}; leitura=${!a.includes("--permission-mode") && !a.includes("--dangerously-skip-permissions")}; auditoria=${said.includes("auditor de segurança")}; revoada=${agentFile ? "sim" : "nao"}; liberadas=${flag("--allowedTools")}; mcp=${mcpFiles.find((f) => !f.includes("/agentes/")) || "nao"}` }], usage: { input_tokens: 1000, cache_read_input_tokens: 50000, cache_creation_input_tokens: 2000, output_tokens: 900 } } });
+  out({ type: "assistant", message: { id: "m1", content: [{ type: "text", text: `olá mundo; imagens=${blocks.filter((b) => b.type === "image").length}; colado=${said.includes("<texto-colado>") ? said.split("<texto-colado>")[1].split("</texto-colado>")[0].trim().split("\n").length : 0}; retomada=${a.includes("--resume")}; modelo=${flag("--model")}; esforco=${flag("--effort")}; plano=${planAt ? "instruido" : "nao"}; viu-plano=${(sys + said).includes("Plano como está agora")}; revisor=${said.includes("<diff>") && said.includes("novo.txt")}; leitura=${!a.includes("--permission-mode") && !a.includes("--dangerously-skip-permissions")}; auditoria=${said.includes("auditor de segurança")}; revoada=${agentFile ? "sim" : "nao"}; liberadas=${flag("--allowedTools")}; mcp=${mcpFiles.find((f) => !f.includes("/agentes/")) || "nao"}` }], usage: { input_tokens: 1000, cache_read_input_tokens: 50000, cache_creation_input_tokens: 2000, output_tokens: 900 } } });
 }
 out({ type: "result", subtype: "success", is_error: false, session_id: "s-claude", total_cost_usd: 0.05, modelUsage: { [MODEL]: { contextWindow: RICH ? 1_000_000 : 200_000 }, "claude-auxiliar": { contextWindow: 64_000 } }, usage: { input_tokens: 100, cache_creation_input_tokens: 20, cache_read_input_tokens: 3000, output_tokens: 40 } });
 process.exit(0);

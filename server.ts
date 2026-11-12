@@ -209,9 +209,15 @@ let vigil: Record<string, unknown> | null = null;
 const usage: Record<string, Usage[]> = readJson(join(ROOT, "usage.json")) || {};
 const liveUsage = (id: string) => (usage[id] || []).filter((u) => u.resetsAt > Date.now());
 const usedPct = (id: string) => Math.max(0, ...liveUsage(id).map((u) => u.pct));
+// Cada leitura traz só parte das janelas. A que veio substitui a mesma janela de antes; a que não veio continua valendo
+// até a hora em que ela renova, com a data em que foi lida. Antes a leitura nova apagava as outras.
+const USAGE_ORDER = ["five_hour", "seven_day", "seven_day_overage_included"];
 function setUsage(id: string, windows: Usage[]) {
   if (!windows.length) return;
-  usage[id] = windows;
+  const now = Date.now(), novas = new Map(windows.map((w) => [w.key, { ...w, at: w.at || now }]));
+  const antigas = (usage[id] || []).filter((u) => !novas.has(u.key) && u.resetsAt > now);
+  const pos = (k: string) => { const i = USAGE_ORDER.indexOf(k); return i < 0 ? USAGE_ORDER.length : i; };
+  usage[id] = [...novas.values(), ...antigas].sort((a, b) => pos(a.key) - pos(b.key) || a.key.localeCompare(b.key));
   writeFileSync(join(ROOT, "usage.json"), JSON.stringify(usage));
 }
 // o Codex grava o consumo no arquivo da sessão: o último registro vale
@@ -658,7 +664,9 @@ const asModel = (m: unknown) => (m === null || m === "" ? null : validModel(m) ?
 const asEffort = (e: unknown) => (e === null || e === "" ? null : typeof e === "string" && Object.values(EFFORTS).some((l) => l.includes(e)) ? e : undefined);
 const asMode = (m: unknown): Mode => (m === "read" || m === "full" || m === "ask" ? m : "edit");
 // só aceita anexo que este servidor gravou
-const ROOM_MAX = 6; // acima disso a conversa vira fila: cada rodada espera todos falarem
+// O anexo fica nesta máquina e o agente abre pelo caminho: o teto existe só para um arrasto por engano não encher o disco.
+// Imagem é reduzida na tela antes de subir, porque essa vai dentro do pedido.
+const ATTACH_MAX = 1_000_000_000;
 const asAttachments = (list: unknown): Attachment[] => (Array.isArray(list) ? list : []).filter((a) => a && typeof a.path === "string" && a.path.startsWith(ATTACH + "/") && existsSync(a.path)).slice(0, 10);
 
 // ---------- conversas que já existem nos outros programas ----------
@@ -1048,6 +1056,7 @@ async function agentApi(req: Request, url: URL): Promise<Response> {
 const server = Bun.serve({
   hostname: "127.0.0.1",
   port: PORT,
+  maxRequestBodySize: ATTACH_MAX + 1_000_000, // o padrão do Bun (128 MB) barraria anexo grande antes de chegar na rota
   async fetch(req, srv) {
     const url = new URL(req.url);
     // o servidor abre shells: só aceita chamadas da própria página local
@@ -1112,7 +1121,6 @@ const server = Bun.serve({
         if (!prompt && !anexos.length) return fail("escreva a mensagem para a sala");
         const sala = [...new Set(targets)].filter((t) => (t.startsWith("pool:") ? !!PROVIDERS[t.slice(5)] : !!account(t)));
         if (sala.length < 2) return fail("a sala precisa de pelo menos dois agentes");
-        if (sala.length > ROOM_MAX) return fail(`a sala comporta até ${ROOM_MAX} agentes. Em vez de marcar conta por conta, escolha o rodízio de cada provedor.`);
         return json({ kind: "chat", id: convos.create({ prompt, target: sala[0], room: sala, cwd, mode: asMode(body.mode), brain: body.brain !== false, attachments: anexos }).id });
       }
       if (targets.length > 1) {
@@ -1134,11 +1142,13 @@ const server = Bun.serve({
         return existsSync(f) ? new Response(Bun.file(f)) : new Response("not found", { status: 404 });
       }
       const name = basename(decodeURIComponent(req.headers.get("x-name") || "arquivo")).replace(/[^\w.\- ]+/g, "_").slice(-80) || "arquivo";
-      const data = await req.arrayBuffer().catch(() => null);
-      if (!data || !data.byteLength) return fail("arquivo vazio");
-      if (data.byteLength > 25_000_000) return fail("anexo grande demais (máximo 25 MB)");
+      const grande = `anexo grande demais (máximo ${Math.round(ATTACH_MAX / 1e9)} GB)`;
+      if (Number(req.headers.get("content-length") || 0) > ATTACH_MAX) return fail(grande);
+      // grava direto no disco, aos pedaços: um PDF de centenas de MB não passa inteiro pela memória
       const aid = crypto.randomUUID().slice(0, 8), path = join(ATTACH, `${aid}-${name}`);
-      writeFileSync(path, new Uint8Array(data));
+      const escrito = await Bun.write(path, new Response(req.body)).catch(() => 0);
+      if (!escrito) { rmSync(path, { force: true }); return fail("arquivo vazio"); }
+      if (escrito > ATTACH_MAX) { rmSync(path, { force: true }); return fail(grande); }
       const mime = req.headers.get("content-type") || "application/octet-stream";
       return json({ id: aid, name, path, mime, image: /^image\/(png|jpe?g|gif|webp)$/.test(mime) } satisfies Attachment);
     }
@@ -1175,6 +1185,10 @@ const server = Bun.serve({
       if (action === "plan") {
         if (req.method === "POST") convos.setPlan(c.id, !!body.on);
         return json(convos.plan(c.id));
+      }
+      if (req.method === "POST" && action === "room") {
+        const sala = (Array.isArray(body.room) ? body.room : []).filter((t: unknown): t is string => typeof t === "string" && (t.startsWith("pool:") ? !!PROVIDERS[t.slice(5)] : !!account(t)));
+        try { return json({ room: convos.setRoom(c, sala).room || null }); } catch (e: any) { return fail(e.message); }
       }
       if (req.method === "POST" && action === "rewind") {
         await Promise.all(accounts.filter((a) => !statusCache.has(a.id)).map(refreshStatus));

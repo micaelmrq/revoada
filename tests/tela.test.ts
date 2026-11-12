@@ -291,7 +291,7 @@ describe.skipIf(!CHROME)("tela", () => {
     const use = await page(`const p = document.querySelector("#popUsage"); return { on: p.classList.contains("on"), rows: [...p.querySelectorAll(".u")].map((u) => u.querySelector("span").textContent + " | " + u.querySelector("small").textContent.replace(/\\s+/g, " ").trim()), fits: p.getBoundingClientRect().right <= innerWidth && p.getBoundingClientRect().left >= 0 };`);
     expect(use.on && use.fits).toBe(true);
     expect(use.rows[0]).toBe("Janela de contexto | 53,9k / 200k (27%)");
-    expect(use.rows[1]).toMatch(/^Limite de sessão \| Reinicia em (5\d|60|1 h 0) min 42%$/);
+    expect(use.rows[1]).toMatch(/^Limite de 5 horas \| Reinicia em (5\d|60|1 h 0) min 42%$/);
     expect(use.rows[2]).toMatch(/^Semanal · todos os modelos \| Reinicia (em 23 h \d+ min|\S+,? \d\d:\d\d) 10%$/);
     await page(`closePops(); localStorage.removeItem("models"); for (const k of Object.keys(choice)) delete choice[k];`);
   }, SLOW);
@@ -866,6 +866,11 @@ describe.skipIf(!CHROME)("tela", () => {
       document.querySelector("#prompt").dispatchEvent(ev2);
       return { segurou: ev.defaultPrevented, campo: document.querySelector("#prompt").value, inteiro: texto === longo, mime: a.mime.split(";")[0], cartao: document.querySelector("#atts .att.texto")?.innerText.includes("TEXTO COLADO") || document.querySelector("#atts .att.texto")?.innerText.includes("Texto colado"), curtoLivre: !ev2.defaultPrevented };`);
     expect(colado).toEqual({ segurou: true, campo: "", inteiro: true, mime: "text/plain", cartao: true, curtoLivre: true });
+    // o cartão abre o texto inteiro, com as quebras de linha como foram coladas
+    await page(`document.querySelector("#atts .att.texto").click();`);
+    await until(`document.querySelector("#textoDlg").open`);
+    expect(await page(`const t = document.querySelector("#textoCorpo"); return [t.textContent.split("\\n").length, getComputedStyle(t).whiteSpace, document.querySelector("#textoInfo").textContent.startsWith("90 linhas"), document.querySelector("#atts .att.texto .trecho").textContent.split("\\n").length > 1]`)).toEqual([90, "pre-wrap", true, true]);
+    await page(`document.querySelector("#textoFecha").click();`);
     // o × tira o anexo
     await page(`document.querySelector("#atts [data-rm-att='0']").click();`);
     expect(await page(`return [attached.length, !!document.querySelector("#atts .att.foto")]`)).toEqual([1, false]);
@@ -884,12 +889,28 @@ describe.skipIf(!CHROME)("tela", () => {
     const conversa = await page(`return { sala: chat.room, falas: chat.messages.filter((m) => m.role === "assistant").map((m) => [m.accountId, m.state]), nomes: [...document.querySelectorAll("#msgs .m:not(.user) .who b")].map((b) => b.textContent),
       sub: document.querySelector("#chSub").textContent.startsWith("sala com Claude"), rodape: document.querySelector("#targetChip").innerText.trim(), modelo: document.querySelector("#modelChip").style.display };`);
     expect(conversa).toEqual({ sala: ["claude-padrao", dois], falas: [["claude-padrao", "done"], [dois, "done"]], nomes: ["Claude", "Codex"], sub: true, rodape: "Sala · 2 agentes", modelo: "none" });
+    // dentro da sala o seletor mostra todos os presentes marcados, e desmarcar um tira ele da sala (com um só, vira conversa comum)
+    await page(`paintTargets(); togglePop("popTarget");`);
+    expect(await page(`return [...document.querySelectorAll("#popTarget .opt.on")].map((b) => b.dataset.t)`)).toEqual(["claude-padrao", dois]);
+    await page(`document.querySelector('#popTarget [data-t="pool:claude"]').click();`);
+    await until(`chat.room.length === 3`);
+    expect(await page(`return [chat.room, document.querySelector("#targetChip").innerText.trim(), document.querySelector("#popTarget").classList.contains("on")]`)).toEqual([["claude-padrao", dois, "pool:claude"], "Sala · 3 agentes", true]);
+    await page(`document.querySelector('#popTarget [data-t="pool:claude"]').click();`);
+    await until(`chat.room.length === 2`);
+    expect((await env.api(`convos/${await page("return chat.id")}`)).room).toEqual(["claude-padrao", dois]);
+    await page(`closePops();`);
     // voz: o botão liga e desliga, e o texto lido sai sem código, marcação nem endereço
     const vozes = await page(`const antes = document.querySelector("#vozBtn").getAttribute("aria-pressed"); document.querySelector("#vozBtn").click(); const ligada = document.querySelector("#vozBtn").getAttribute("aria-pressed");
       document.querySelector("#vozBtn").click(); calaVoz();
       return { antes, ligada, depois: document.querySelector("#vozBtn").getAttribute("aria-pressed"), limpo: paraOuvir(${JSON.stringify("**Pronto**: rodei `bun test`.\n\n```js\nconst a = 1;\n```\n- veja https://exemplo.dev/x")}) };`);
     expect(vozes).toEqual({ antes: "false", ligada: "true", depois: "false", limpo: "Pronto: rodei bun test. Trecho de código. veja link" });
     await page(`setMode(window.__modo); picked.clear(); store.set("targets", "[]"); go({ type: "home" }); paintComposer();`);
+  }, SLOW);
+
+  test("cota de uso: as janelas têm o nome que o Claude usa e a leitura diz de quando é", async () => {
+    expect(await page(`return [windowName("five_hour"), windowName("seven_day"), windowName("seven_day_overage_included"), janelaCurta("seven_day_overage_included"), janelaCurta("seven_day_opus"),
+      lidoHa(Date.now() - 30000), lidoHa(Date.now() - 12 * 60000), lidoHa(Date.now() - 3 * 3600000), lidoHa(undefined)]`))
+      .toEqual(["Limite de 5 horas", "Semanal · todos os modelos", "Semanal · Fable", "7 dias · Fable", "7 dias · Opus", "lido agora", "lido há 12 min", "lido há 3 h", ""]);
   }, SLOW);
 
   test("início: o campo de grão ocupa a tela inteira atrás do conteúdo e some fora dela", async () => {

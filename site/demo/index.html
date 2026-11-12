@@ -403,7 +403,14 @@
   #atts .att:not(.foto) { padding: 0 14px 0 10px; gap: 10px; }
   #atts .att .doc { width: 40px; height: 40px; border-radius: 9px; text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
   #atts .att.texto { width: 148px; padding: 8px 10px; flex-direction: column; align-items: stretch; gap: 4px; }
-  #atts .att.texto .trecho { flex: 1; min-height: 0; font-size: 9.5px; line-height: 1.35; color: var(--tinta3); white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  #atts .att.texto .trecho { flex: 1; min-height: 0; font-size: 9.5px; line-height: 1.35; color: var(--tinta3); white-space: pre-line; overflow: hidden; }
+  .att.texto { cursor: pointer; } .att.texto:hover { background: var(--sup2); }
+  /* na mensagem enviada o texto colado continua um cartão que abre, com as primeiras linhas como foram coladas */
+  .m.user .att.texto { width: 220px; height: 84px; padding: 9px 11px; flex-direction: column; align-items: stretch; gap: 5px; border-radius: 12px; max-width: none; }
+  .m.user .att.texto .trecho { display: block; flex: 1; min-height: 0; overflow: hidden; white-space: pre-line; font-size: 11px; line-height: 1.4; color: var(--tinta3); }
+  .m.user .att.texto > span:not(.trecho) { flex: none; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--tinta2); }
+  #textoDlg { width: min(820px, 94vw); max-height: 86vh; display: none; flex-direction: column; } #textoDlg[open] { display: flex; }
+  #textoCorpo { margin: 16px 0 0; padding: 16px 18px; background: var(--sup); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--fio); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 13.5px/1.6 "Geist", ui-sans-serif, system-ui, sans-serif; color: var(--tinta); min-height: 120px; -webkit-user-select: text; user-select: text; tab-size: 2; }
   #atts .att.texto > span:not(.trecho) { font-size: 11px; color: var(--tinta2); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; flex: none; }
   #atts .att button { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--sup2); color: var(--tinta); box-shadow: 0 0 0 1px var(--fio2); font-size: 14px; line-height: 1; opacity: 0; transition: opacity .12s ease; }
   #atts .att button::before { content: ""; position: absolute; inset: -9px; }
@@ -443,7 +450,7 @@
   .bubble { font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-width: 64ch; border-radius: 6px; }
   .bubble.editing { outline: 1.5px dashed var(--tinta2); outline-offset: 4px; }
   .m.user .atts { padding: 0 0 4px; }
-  .m.user .att .trecho { display: none; }
+  .m.user .att:not(.texto) .trecho { display: none; }
   .m.user .att img { width: 72px; height: 72px; border-radius: 9px; } .m.user .att { padding: 4px; }
   .md { line-height: 1.55; font-size: 14.5px; min-width: 0; overflow-wrap: anywhere; }
   .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
@@ -839,6 +846,7 @@
 <dialog id="planDlg"><header><div><h2>Plano da tarefa</h2><small id="planSub"></small></div><button class="ic-b" id="planClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="planBody"></div></dialog>
 <dialog id="diffDlg"><header><div><h2 id="diffTitle"></h2><small id="diffSub"></small></div><button class="ic-b" id="diffClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="diffBody"></div></dialog>
 <dialog id="phoneDlg"><header><div><h2>Acompanhar pelo celular</h2><small>Uma página leve, em outro aparelho, com o que os agentes estão fazendo.</small></div><button class="ic-b" id="phoneClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="phoneBody"></div></dialog>
+<dialog id="textoDlg"><header><div><h2>Texto colado</h2><small id="textoInfo"></small></div><span style="display:flex;gap:8px;align-items:center"><button class="btn line" id="textoCopia">Copiar</button><button class="ic-b" id="textoFecha" data-ic="x" aria-label="Fechar" title="Fechar"></button></span></header><pre id="textoCorpo" tabindex="0"></pre></dialog>
 <dialog id="appsDlg"><header><div><h2>Apps conectados</h2><small>Skills e servidores MCP da conta padrão de cada provedor, e o que as outras contas recebem.</small></div><button class="ic-b" id="appsClose" data-ic="x" aria-label="Fechar" title="Fechar"></button></header><div id="appsBody"></div></dialog>
 <div id="toast" role="status"></div>
 <div id="dica" role="tooltip" hidden></div>
@@ -1608,6 +1616,7 @@ $("targetChip").onclick = (e) => { e.stopPropagation(); paintTargets(); togglePo
 document.addEventListener("click", (e) => { if (!e.target.closest(".pop")) closePops(); });
 
 function targets() {
+  if (view.type === "chat" && chat?.room) return chat.room; // na sala quem responde é a sala inteira
   if (view.type === "chat") return chatTarget ? [chatTarget] : [];
   const valid = [...picked].filter((t) => t.startsWith("pool:") ? S.accounts.some((a) => a.provider === t.slice(5) && ready(a)) : acc(t) && ready(acc(t)));
   if (valid.length) return valid;
@@ -1627,7 +1636,7 @@ function paintComposer() {
   $("prompt").classList.toggle("sug", !!sug);
   if (sug && !$("prompt").value) $("notes").textContent = "sugestão · Tab aceita · Enter envia";
   else if ($("notes").textContent.startsWith("sugestão")) $("notes").textContent = "";
-  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? "Escreva a próxima: entra quando o agente terminar" : "Responder";
+  $("prompt").placeholder = sug ? sug : supervisor && !inChat ? "Descreva o trabalho inteiro: o supervisor divide em tarefas" : !inChat ? "Peça qualquer coisa" : rewriting != null ? "Reescreva a mensagem. Enter manda de novo, Esc desiste" : chat?.waiting ? "Enter permite, Esc nega. Ou escreva a próxima mensagem" : busy ? (chat?.room ? "Escreva: a sala para e ouve assim que quem está falando terminar" : "Escreva a próxima: entra quando o agente terminar") : "Responder";
   const ts = targets();
   const pv = curProvider(), ch = curChoice();
   $("modelChip").style.display = pv && !terminal && !(inChat && chat?.room) && !(!inChat && targets().length > 1 && sala) ? "inline-flex" : "none"; // na sala cada agente fala no padrão da própria conta
@@ -1678,9 +1687,9 @@ function paintTargets() {
     const opt = (v, name, note, ok) => `<button class="opt ${ts.has(v) ? "on" : ""}" data-t="${v}" ${ok ? "" : "disabled"}><span class="ck">${ts.has(v) ? ICON.check : ""}</span>${esc(name)}<small>${esc(note)}</small></button>`;
     return opt("pool:" + p.id, p.name, n ? `rodízio · começa pela mais folgada de ${n}` : "nenhuma conta pronta", n)
       + mine.map((a) => opt(a.id, accName(a), a.limit ? `no limite até ${hm(a.limit.until)}` : a.status.ok ? useNote(a) || "só esta conta" : "sem login", ready(a))).join("");
-  }).join("") + `<span class="label" style="padding-top:12px;font-weight:400;font-size:12.5px">${view.type === "chat" ? "Trocar de agente no meio da conversa leva o histórico junto, mesmo entre provedores." : "Uma conta abre uma conversa. Várias respondem em paralelo, lado a lado."}</span>`;
+  }).join("") + `<span class="label" style="padding-top:12px;font-weight:400;font-size:12.5px">${view.type === "chat" && chat?.room ? "Marque quem fica na sala. Quem entra agora lê a conversa desde o começo." : view.type === "chat" ? "Trocar de agente no meio da conversa leva o histórico junto, mesmo entre provedores." : "Uma conta abre uma conversa. Várias respondem em paralelo, lado a lado."}</span>`;
 }
-$("popTarget").onclick = (e) => {
+$("popTarget").onclick = async (e) => {
   e.stopPropagation();
   const tudo = e.target.closest("[data-todos]");
   if (tudo) {
@@ -1690,6 +1699,15 @@ $("popTarget").onclick = (e) => {
     paintTargets(); return paintComposer();
   }
   const b = e.target.closest("[data-t]"); if (!b || b.disabled) return;
+  // na sala o seletor põe e tira gente: a marca muda na hora e o servidor guarda quem fica
+  if (view.type === "chat" && chat?.room) {
+    const sala = chat.room.includes(b.dataset.t) ? chat.room.filter((t) => t !== b.dataset.t) : [...chat.room, b.dataset.t];
+    if (!sala.length) return toast("A sala precisa de pelo menos um agente.");
+    const r = await api(`convos/${chat.id}/room`, "POST", { room: sala }).catch((e) => { toast(e.message || "Não consegui mudar a sala."); return null; });
+    if (!r) return;
+    if (r.room) chat.room = r.room; else { delete chat.room; chatTarget = sala[0]; toast(`A sala ficou só com ${targetName(sala[0])}: virou conversa comum.`); }
+    paintTargets(); return paintComposer();
+  }
   if (view.type === "chat") { chatTarget = b.dataset.t; paintTargets(); paintComposer(); return closePops(); }
   const cur = new Set(targets()); cur.has(b.dataset.t) ? cur.delete(b.dataset.t) : cur.add(b.dataset.t);
   picked.clear(); cur.forEach((t) => picked.add(t)); store.set("targets", JSON.stringify([...picked]));
@@ -1837,7 +1855,10 @@ $("popModel").addEventListener("change", (e) => { if (e.target.id === "modelFree
 $("popModel").addEventListener("keydown", (e) => { if (e.target.id === "modelFree" && e.key === "Enter") { e.target.blur(); closePops(); $("prompt").focus(); } });
 
 // ---------- uso: janela de contexto e limites da conta ----------
-const WINDOW_NAME = { five_hour: "Limite de sessão", seven_day: "Semanal · todos os modelos" };
+// Nomes como o Claude mostra. seven_day_overage_included é o que o Claude Code chama de limite do Fable (o modelo que tem cota semanal própria).
+const WINDOW_NAME = { five_hour: "Limite de 5 horas", seven_day: "Semanal · todos os modelos", seven_day_overage_included: "Semanal · Fable", seven_day_opus: "Semanal · Opus", seven_day_sonnet: "Semanal · Sonnet" };
+// de quando é a leitura: o número vem da última resposta da conta, não é consultado ao vivo
+const lidoHa = (at) => { if (!at) return ""; const m = Math.max(0, Math.round((Date.now() - at) / 60000)); return m < 2 ? "lido agora" : m < 60 ? `lido há ${m} min` : m < 1440 ? `lido há ${Math.round(m / 60)} h` : `lido há ${Math.round(m / 1440)} d`; };
 const windowName = (k) => WINDOW_NAME[k] || (k.startsWith("seven_day_") ? `Semanal · ${k.slice(10).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}` : k.replace(/_/g, " "));
 const resets = (t) => { const ms = t - Date.now(); if (ms <= 0) return ""; const min = Math.round(ms / 60000); return min < 1440 ? `Reinicia em ${min >= 60 ? `${Math.floor(min / 60)} h ` : ""}${min % 60} min` : `Reinicia ${new Date(t).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}`; };
 // a conta cujo uso interessa agora: a que está respondendo a conversa, ou as que podem responder o próximo pedido
@@ -1866,7 +1887,8 @@ function paintUsage() {
     : `<small>O tamanho da conversa na janela de contexto aparece depois da primeira resposta. Hoje só o Claude informa.</small><hr>`;
   const accHtml = accs.length ? accs.map((a) => `<span class="label">Limites de uso · ${esc(accName(a))}${a.status.detail ? ` · ${esc(a.status.detail.split(" · ")[0])}` : ""}</span>`
     + (a.limit ? row("No limite", `volta ${hm(a.limit.until)}`, 100, "hit") : "")
-    + ((a.usage || []).length ? a.usage.map((u) => row(windowName(u.key), `${resets(u.resetsAt)}  ${u.pct}%`.trim(), u.pct)).join("") : a.limit ? "" : `<small>Esta conta ainda não informou consumo. Aparece depois da primeira resposta dela.</small>`)).join("")
+    + ((a.usage || []).length ? a.usage.map((u) => row(windowName(u.key), `${resets(u.resetsAt)}  ${u.pct}%`.trim(), u.pct)).join("")
+      + `<small>${[...new Set(a.usage.map((u) => lidoHa(u.at)).filter(Boolean))].join(" e ") || "Leitura"} da última resposta desta conta. O ${esc(prov(a.provider)?.name || "provedor")} só informa parte das janelas a cada resposta; a que não aparece ainda não foi informada.</small>` : a.limit ? "" : `<small>Esta conta ainda não informou consumo. Aparece depois da primeira resposta dela.</small>`)).join("")
     : `<small>Nenhuma conta pronta para este pedido.</small>`;
   $("popUsage").innerHTML = ctxHtml + accHtml;
 }
@@ -1988,11 +2010,11 @@ const attUrl = (a) => `/api/attach/${encodeURIComponent(a.path.split("/").pop())
 const attExt = (a) => (a.name.includes(".") ? a.name.split(".").pop() : "").slice(0, 4);
 // na mensagem enviada (i nulo) o cartão é só leitura; na caixa ganha o × e mostra o que ainda está subindo
 const attHtml = (a, i) => a.pending ? `<span class="att subindo" title="${esc(a.name)}"><span class="doc"><i class="gira"></i></span><span>${esc(a.name)}</span></span>`
-  : `<span class="att ${a.image ? "foto" : a.colado ? "texto" : ""}" title="${esc(a.name)}">${a.image ? `<img src="${attUrl(a)}" alt="${esc(a.name)}">` : a.colado ? `<span class="trecho">${esc(a.colado)}</span>` : `<span class="doc">${esc(attExt(a))}</span>`}<span>${esc(a.colado ? "Texto colado" : a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover ${esc(a.colado ? "texto colado" : a.name)}">×</button>`}</span>`;
+  : `<span class="att ${a.image ? "foto" : a.colado ? "texto" : ""}" ${a.colado ? `data-ver-texto="${esc(attUrl(a))}" role="button" tabindex="0" aria-label="Abrir o texto colado"` : `title="${esc(a.name)}"`}>${a.image ? `<img src="${attUrl(a)}" alt="${esc(a.name)}">` : a.colado ? `<span class="trecho">${esc(a.colado)}</span>` : `<span class="doc">${esc(attExt(a))}</span>`}<span>${esc(a.colado ? "Texto colado" : a.name)}</span>${i == null ? "" : `<button data-rm-att="${i}" aria-label="Remover ${esc(a.colado ? "texto colado" : a.name)}">×</button>`}</span>`;
 function paintAtts() { $("atts").innerHTML = attached.map(attHtml).join(""); paintSend(); }
 // Print copiado no Mac chega como TIFF sem compressão (dezenas de MB) e foto de celular passa fácil do limite: a imagem é
 // redesenhada em PNG, e se ainda ficar pesada, reduzida e passada para JPEG. O agente lê melhor assim e o envio não estoura.
-const IMG_LADO = 2576, IMG_PESO = 4_500_000, ANEXO_MAX = 25_000_000;
+const IMG_LADO = 2576, IMG_PESO = 4_500_000, ANEXO_MAX = 1_000_000_000; // arquivo fica na máquina e o agente abre pelo caminho; imagem é reduzida antes
 async function enxugaImagem(f) {
   const leve = /^image\/(png|jpe?g|gif|webp)$/.test(f.type) && f.size <= IMG_PESO;
   if (!f.type.startsWith("image/") || f.type === "image/gif" || f.type === "image/svg+xml" || leve) return f;
@@ -2015,7 +2037,7 @@ async function addFiles(files, extra = {}) {
     attached.push(vaga); paintAtts();
     const tira = () => { const k = attached.indexOf(vaga); if (k >= 0) attached.splice(k, 1); return k; };
     const f = await enxugaImagem(original);
-    if (f.size > ANEXO_MAX) { tira(); paintAtts(); toast(`${f.name || "O arquivo"} tem ${Math.round(f.size / 1e6)} MB. O limite é 25 MB por anexo.`); continue; }
+    if (f.size > ANEXO_MAX) { tira(); paintAtts(); toast(`${f.name || "O arquivo"} tem ${(f.size / 1e9).toFixed(1).replace(".", ",")} GB. O limite é 1 GB por anexo.`); continue; }
     const r = await fetch("/api/attach", { method: "POST", headers: { "content-type": f.type || "application/octet-stream", "x-name": encodeURIComponent(f.name || `print-${Date.now()}.png`) }, body: f }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
     const k = tira();
@@ -2024,6 +2046,18 @@ async function addFiles(files, extra = {}) {
     paintAtts();
   }
 }
+// o cartão de texto colado abre o texto inteiro, como foi colado, na caixa de pedido e nas mensagens já enviadas
+async function abreTexto(url) {
+  const t = await fetch(url).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+  if (t == null) return toast("Não consegui abrir este texto.");
+  $("textoCorpo").textContent = t;
+  $("textoInfo").textContent = `${plural(t.split("\n").length, "linha", "linhas")}, ${t.length.toLocaleString("pt-BR")} letras. O agente recebe este texto inteiro, com as quebras de linha.`;
+  $("textoDlg").showModal(); $("textoCorpo").scrollTop = 0;
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-rm-att]")) return; const c = e.target.closest("[data-ver-texto]"); if (c) abreTexto(c.dataset.verTexto); });
+document.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-ver-texto]")) { e.preventDefault(); abreTexto(e.target.dataset.verTexto); } });
+$("textoFecha").onclick = () => $("textoDlg").close();
+$("textoCopia").onclick = async () => { try { await navigator.clipboard.writeText($("textoCorpo").textContent); toast("Texto copiado."); } catch { toast("Não consegui copiar."); } };
 // a área de transferência costuma trazer a mesma imagem em vários formatos (TIFF e PNG): fica uma, de preferência a PNG
 const semRepetir = (fs) => { const imgs = fs.filter((f) => f.type.startsWith("image/")), resto = fs.filter((f) => !f.type.startsWith("image/")); return imgs.length > 1 && imgs.every((f) => !f.name || /^image\./i.test(f.name)) ? [imgs.find((f) => f.type === "image/png") || imgs[0], ...resto] : fs; };
 // texto grande colado vira anexo, como no Claude: a caixa continua curta e o agente lê o arquivo inteiro
@@ -2037,7 +2071,7 @@ $("prompt").addEventListener("paste", (e) => {
   const texto = e.clipboardData?.getData("text/plain") || "";
   if (texto.length < COLA_LETRAS && texto.split("\n").length < COLA_LINHAS) return;
   e.preventDefault();
-  addFiles([new File([texto], `texto-colado-${Date.now()}.txt`, { type: "text/plain" })], { colado: texto.trim().slice(0, 240) });
+  addFiles([new File([texto], `texto-colado-${Date.now()}.txt`, { type: "text/plain" })], { colado: texto.trim().split("\n").filter((l) => l.trim()).slice(0, 6).join("\n").slice(0, 320) });
 });
 for (const ev of ["dragenter", "dragover"]) $("composer").addEventListener(ev, (e) => { if (e.dataTransfer?.types.includes("Files")) { e.preventDefault(); $("composer").classList.add("drop"); } });
 for (const ev of ["dragleave", "drop"]) $("composer").addEventListener(ev, (e) => { $("composer").classList.remove("drop"); if (ev === "drop" && e.dataTransfer?.files.length) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
@@ -2385,6 +2419,8 @@ $("msgs").addEventListener("click", async (e) => {
   loadChat(true);
 });
 $("queued").addEventListener("click", async (e) => {
+  // enviar agora: para quem está respondendo; a mensagem que esperava entra em seguida
+  if (e.target.closest("[data-ja]") && chat) { await api(`convos/${chat.id}/stop`, "POST", {}).catch(() => {}); return loadChat(true); }
   const b = e.target.closest("[data-unq]"); if (!b || !chat) return;
   await api(`convos/${chat.id}/queue/${b.dataset.unq}`, "DELETE").catch(() => {});
   loadChat(true);
@@ -2412,7 +2448,7 @@ function renderChat() {
     while (el.children.length > parts.length) el.lastChild.remove();
   });
   while (wrap.children.length > chat.messages.length) wrap.lastChild.remove();
-  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
+  const queued = (chat.queue || []).map((q, j) => `<div class="m user"><div class="part" data-k="av"><span class="rosto eu">${esc($("meIni").textContent || "v")}</span></div><div class="part"><div class="who"><b>Você</b></div>${q.attachments?.length ? `<div class="atts">${q.attachments.map((a) => attHtml(a)).join("")}</div>` : ""}<div class="bubble">${esc(tidy(q.text))}</div><span class="qnote">${chat.working ? (j ? "na fila" : chat.room ? "entra quando quem está falando terminar" : "entra quando o agente terminar") : "ficou na fila: a resposta anterior deu erro"}${chat.working && !j ? `<button class="link" data-ja title="Interrompe quem está respondendo e manda esta mensagem">enviar agora</button>` : ""}<button class="link" data-unq="${j}">tirar</button></span></div></div>`).join("");
   if ($("queued").dataset.h !== queued) { $("queued").dataset.h = queued; $("queued").innerHTML = queued; }
   tickChat();
   // o plano muda enquanto o agente trabalha; quando ele termina, busca a versão final sem esperar
@@ -2540,10 +2576,10 @@ async function loadRun() {
 // ---------- contas ----------
 const WINDOW = { five_hour: "5 horas", seven_day: "7 dias" };
 // janela que o provedor manda com nome próprio (seven_day_opus, seven_day_overage_included): nome curto que cabe na coluna
-const WINDOW_EXTRA = { overage_included: "extra" };
+const WINDOW_EXTRA = { overage_included: "Fable", opus: "Opus", sonnet: "Sonnet" };
 const janelaCurta = (k) => WINDOW[k] || (k.startsWith("seven_day_") ? `7 dias · ${WINDOW_EXTRA[k.slice(10)] || k.slice(10).replace(/_/g, " ")}` : k.startsWith("five_hour_") ? `5 horas · ${k.slice(10).replace(/_/g, " ")}` : k.replace(/_/g, " "));
-const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d" }[u.key] || u.key} ${u.pct}%`).join(" · ") : "");
-const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
+const useNote = (a) => (a.usage?.length ? a.usage.map((u) => `${{ five_hour: "5h", seven_day: "7d", seven_day_overage_included: "Fable", seven_day_opus: "Opus", seven_day_sonnet: "Sonnet" }[u.key] || janelaCurta(u.key)} ${u.pct}%`).join(" · ") : "");
+const usoBarras = (a) => `<div class="uso">${a.usage.map((u) => `<div class="l ${u.pct >= 85 ? "alto" : ""}"><span title="${esc(windowName(u.key))}">${esc(janelaCurta(u.key))}</span><span class="trilha"><i style="width:${Math.min(100, u.pct)}%"></i></span><span class="num" title="renova ${new Date(u.resetsAt).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}${lidoHa(u.at) ? " · " + lidoHa(u.at) : ""}">${u.pct}% · renova ${new Date(u.resetsAt).toLocaleString("pt-BR", Date.now() + 86400000 > u.resetsAt ? { hour: "2-digit", minute: "2-digit" } : { weekday: "long" })}</span></div>`).join("")}</div>`;
 // segunda linha da conta: o plano, e na conta da máquina o aviso de que é o login que já estava lá (o e-mail já é o título)
 const detalheDaConta = (a) => { const d = a.status.detail || "Pronta"; if (!ehDaMaquina(a)) return d; const plano = d.replace(/\s*·?\s*[\w.+-]+@[\w-]+(\.[\w-]+)+/, "").trim(); return [plano && !/^(pronta|logado)$/i.test(plano) ? plano : "", "login desta máquina"].filter(Boolean).join(" · "); };
 // o motivo do limite vem cru do CLI (às vezes um pedaço de JSON): vira uma frase, ou some se não der para dizer nada
