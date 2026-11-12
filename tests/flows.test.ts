@@ -228,6 +228,39 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [{ ...att, path: "/etc/passwd" }] })))).toContain("imagens=0");
   }, SLOW);
 
+  test("sala: os agentes falam um por vez na mesma conversa, leem uns aos outros, e quem não tem o que dizer passa", async () => {
+    const falas = (c: any) => c.messages.filter((m: any) => m.role === "assistant").map((m: any) => m.items.filter((x: any) => x.kind === "text").map((x: any) => x.text).join(" "));
+    const colegaId = (await post("accounts", { provider: "codex", label: "da-sala" })).id; // a conta padrão do Codex de mentira vive no limite
+    const r = await post("chat", { prompt: "decidam o nome", targets: ["claude-padrao", colegaId], room: true, cwd: HOME, brain: false, mode: "read" });
+    expect(r.kind).toBe("chat");
+    let c = await idle(r.id);
+    expect(c.room).toEqual(["claude-padrao", colegaId]);
+    // o segundo já leu o primeiro; na rodada de reação os dois passaram e a fala de quem passa não fica na conversa
+    const [eu, colega] = [c.messages[1], c.messages[2]];
+    expect(falas(c).length).toBe(2);
+    expect(falas(c)[0]).toMatch(/^sala: Claude · .+ fala depois de 0$/);
+    expect(falas(c)[1]).toMatch(/^sala: Codex · .+ fala depois de 1$/);
+    expect([eu.accountId, colega.accountId, eu.room, eu.state, colega.state]).toEqual(["claude-padrao", colegaId, true, "done", "done"]);
+    // mensagem seguinte do usuário: a sala inteira responde de novo, e com SALA-TEIMA cada um reage uma vez ao outro
+    await post(`convos/${r.id}/send`, { text: "agora SALA-TEIMA" });
+    c = await idle(r.id);
+    expect(falas(c).slice(2).map((t: string) => t.replace(/ · .+? (fala|reage).*/, " $1"))).toEqual(["sala: Claude fala", "sala: Codex fala", "sala: Claude reage", "sala: Codex reage"]);
+    expect(c.messages.filter((m: any) => m.role === "user").length).toBe(2);
+  }, SLOW);
+
+  test("sala: menos de dois agentes ou mais que o teto é recusado, e conta fora da rodada avisa sem travar os outros", async () => {
+    expect((await api("chat", "POST", { prompt: "x", targets: ["claude-padrao", "claude-padrao"], room: true, cwd: HOME })).body.error).toContain("pelo menos dois");
+    const s = await get("state"), outra = s.accounts.find((a: any) => a.provider === "codex" && a.id !== "codex-padrao" && a.status.ok).id;
+    const muitos = ["claude-padrao", "codex-padrao", outra, "pool:claude", "pool:codex", "pool:gemini", "pool:grok"];
+    expect((await api("chat", "POST", { prompt: "x", targets: muitos, room: true, cwd: HOME })).body.error).toContain("até 6 agentes");
+    // o Gemini não tem conta pronta no teste e a conta padrão do Codex está no limite: os dois avisam e o resto conversa
+    const r = await post("chat", { prompt: "sigam sem eles", targets: ["claude-padrao", "pool:gemini", "codex-padrao", outra], room: true, cwd: HOME, brain: false, mode: "read" });
+    const c = await idle(r.id), respostas = c.messages.filter((m: any) => m.role === "assistant");
+    expect(respostas.map((m: any) => m.state)).toEqual(["done", "error", "error", "done"]);
+    expect(respostas[1].error).toContain("fora desta rodada");
+    expect(respostas[2].error).toMatch(/bateu no limite e saiu desta rodada|fora desta rodada/); // depende de o limite dela já ter sido visto por outro teste
+  }, SLOW);
+
   test("pedido em paralelo leva o caminho do anexo no texto, e anexo de fora continua recusado", async () => {
     const up = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": "ata.txt" }, body: "ata da reunião" });
     const att = await up.json() as any;

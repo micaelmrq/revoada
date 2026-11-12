@@ -14,6 +14,20 @@ const agora = Math.floor(Date.now() / 1000);
 // quem lançou o agente saiu (o demo foi encerrado): não fica processo para trás
 setInterval(() => { if (process.ppid === 1) process.exit(0); }, 2000).unref();
 
+// Sala: os quatro conversam sobre o pedido, cada um com as suas falas, na ordem em que a vez chega.
+// A fala seguinte de cada um sai conforme quantas vezes ele já falou na conversa; acabou a lista, ele passa.
+const SALA: Record<string, string[]> = {
+  claude: ["Olhei `src/rotas/pedidos.ts`: o offset aparece na rota e no repositório. Eu pego esses dois.", "Fechado: cursor composto, como o Gemini disse. Codex, pode escrever os testes já nesse formato."],
+  codex: ["Fico com `tests/pedidos.test.ts`. Escrevo os casos do cursor antes de o Claude mexer na rota, assim a troca já nasce coberta.", "Combinado. Os testes vão com (data, id)."],
+  gemini: ["Um cuidado antes: cursor só por `id` quebra se a lista sair ordenada por data. Sugiro cursor composto, data e id.", "Eu atualizo a documentação da API, que ainda cita `?pagina=`."],
+  grok: ["Voto no cursor composto. Da minha parte, confiro no fim se o `?pagina=` antigo continua respondendo."],
+};
+function sala(dito: string, eu: string): string | null {
+  if (!dito.includes("<sala>")) return null;
+  const nome = dito.match(/Você é (.+?) e está numa sala/)?.[1] || "", conversa = dito.split("<conversa>")[1] || "";
+  return SALA[eu][conversa.split(`[agente: ${nome}]`).length - 1] || "PASSO";
+}
+
 // o agente "edita" de verdade, pra a conversa ter diff e a revisão cruzada ter o que ler
 function edita(caminho: string, novo?: boolean) {
   try {
@@ -53,6 +67,8 @@ if (quem === "claude") {
   };
   const fim = () => { out({ type: "result", subtype: "success", is_error: false, session_id: `s-${process.pid}`, total_cost_usd: 0.04, modelUsage: { "claude-sonnet-4-5": { contextWindow: 200_000 } }, usage: { input_tokens: 1800, cache_creation_input_tokens: 2600, cache_read_input_tokens: 41000, output_tokens: 700 } }); process.exit(0); };
   if (dito.includes("Você é o revisor")) { await fala(REVISAO); fim(); }
+  const naSala = sala(dito, "claude");
+  if (naSala) { await nap(700); await fala(naSala); fim(); }
   if (dito.includes("supervisor de uma equipe")) { await fala(`${PLANO.fala}\n\n\`\`\`json\n${JSON.stringify({ tarefas: PLANO.tarefas })}\n\`\`\``); fim(); }
   const c = cena(dito);
   if (!c) { await fala(PADRAO); fim(); }
@@ -98,6 +114,8 @@ if (quem === "codex") {
   let n = 0;
   const fala = (text: string) => out({ type: "item.completed", item: { id: `item_${++n}`, type: "agent_message", text } });
   if (dito.includes("Você é o revisor")) { fala(REVISAO); fim(); }
+  const naSala = sala(dito, "codex");
+  if (naSala) { await nap(900); fala(naSala); fim(); }
   const c = cena(dito);
   if (!c) { fala(PADRAO); fim(); }
   for (const p of c!.passos) {
@@ -115,9 +133,13 @@ if (quem === "codex") {
 
 if (quem === "gemini") {
   out({ type: "init", session_id: `g-${process.pid}` });
-  out({ type: "message", role: "assistant", content: PADRAO });
+  const naSala = sala(a.join("\n"), "gemini");
+  if (naSala) await nap(900);
+  out({ type: "message", role: "assistant", content: naSala || PADRAO });
   out({ type: "result", status: "success", stats: { input_tokens: 900, output_tokens: 60, cached: 0 } });
   process.exit(0);
 }
 
-console.log(PADRAO); // grok: texto puro
+const salaDoGrok = sala(a.join("\n"), "grok");
+if (salaDoGrok) await nap(900);
+console.log(salaDoGrok || PADRAO); // grok: texto puro

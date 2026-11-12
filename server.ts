@@ -628,6 +628,7 @@ const convos = createConvos({
   extraArgs: (acc, c) => agentArgs(acc as Account, c),
   account: (id) => (id ? account(id) : undefined),
   accName,
+  provName: (p) => PROVIDERS[p]?.name || p,
   binPath,
   envFor: (a) => envFor(a as Account),
   pick: (provider, skip) => { const a = pickAccount(provider, skip); if (a) lastUsed[a.id] = Date.now(); return a; },
@@ -650,6 +651,7 @@ const asModel = (m: unknown) => (m === null || m === "" ? null : validModel(m) ?
 const asEffort = (e: unknown) => (e === null || e === "" ? null : typeof e === "string" && Object.values(EFFORTS).some((l) => l.includes(e)) ? e : undefined);
 const asMode = (m: unknown): Mode => (m === "read" || m === "full" || m === "ask" ? m : "edit");
 // só aceita anexo que este servidor gravou
+const ROOM_MAX = 6; // acima disso a conversa vira fila: cada rodada espera todos falarem
 const asAttachments = (list: unknown): Attachment[] => (Array.isArray(list) ? list : []).filter((a) => a && typeof a.path === "string" && a.path.startsWith(ATTACH + "/") && existsSync(a.path)).slice(0, 10);
 
 // ---------- conversas que já existem nos outros programas ----------
@@ -1098,6 +1100,14 @@ const server = Bun.serve({
       // em paralelo e no terminal o agente não recebe o anexo como imagem: vai o caminho do arquivo no fim do pedido, e ele abre de lá
       const anexos = asAttachments(body.attachments);
       const comAnexos = anexos.length ? `${prompt}\n\nArquivos anexados a este pedido (abra cada um antes de responder):\n${anexos.map((a) => `- ${a.path}`).join("\n")}` : prompt;
+      // sala: os agentes escolhidos conversam na mesma conversa, um por vez, lendo uns aos outros
+      if (targets.length > 1 && body.room && !body.terminal) {
+        if (!prompt && !anexos.length) return fail("escreva a mensagem para a sala");
+        const sala = [...new Set(targets)].filter((t) => (t.startsWith("pool:") ? !!PROVIDERS[t.slice(5)] : !!account(t)));
+        if (sala.length < 2) return fail("a sala precisa de pelo menos dois agentes");
+        if (sala.length > ROOM_MAX) return fail(`a sala comporta até ${ROOM_MAX} agentes. Em vez de marcar conta por conta, escolha o rodízio de cada provedor.`);
+        return json({ kind: "chat", id: convos.create({ prompt, target: sala[0], room: sala, cwd, mode: asMode(body.mode), brain: body.brain !== false, attachments: anexos }).id });
+      }
       if (targets.length > 1) {
         if (!prompt) return fail("escreva o pedido para disparar em paralelo");
         return json({ kind: "run", id: (await startRun(comAnexos, targets, cwd, asMode(body.mode) !== "read", ctx, !!body.isolate)).id });
