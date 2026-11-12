@@ -750,7 +750,7 @@
         <input type="file" id="filePick" multiple hidden>
         <textarea id="prompt" rows="1" placeholder="Peça qualquer coisa" aria-label="Pedido"></textarea>
         <div class="row">
-          <button class="chip" id="attChip" title="Anexar imagem ou arquivo. Também dá para colar um print ou arrastar para cá." aria-label="Anexar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7-7l8.2-8.3a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/></svg></button>
+          <button class="chip" id="attChip" title="Anexar imagem ou arquivo. Também dá para colar um print ou arrastar para cá." aria-label="Anexar imagem ou arquivo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <span class="sp"></span>
           <button class="send" id="send" title="Enviar (Enter)" aria-label="Enviar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
         </div>
@@ -1432,7 +1432,7 @@ function paintComposer() {
   $("targetChip").innerHTML = `<span class="lb">${esc(who)}</span>${ICON.down}`; $("targetChip").title = who;
   $("brainChip").innerHTML = `${ICON.brain}<span class="lb">Cérebro</span>`; $("brainChip").classList.toggle("on", useBrain);
   $("modeChip").innerHTML = `${ICON.edit}<span class="lb">${MODES[mode]}</span>`; $("modeChip").classList.toggle("on", mode !== "read"); $("modeChip").title = MODE_HINT[mode] + " Clique para trocar.";
-  $("attChip").style.display = ts.length > 1 || terminal ? "none" : "inline-flex";
+  $("attChip").style.display = "inline-flex"; // anexo vale em todo modo: numa conta vai como imagem, em paralelo e no terminal vai o caminho do arquivo
   if (!inChat && repo.cwd !== cwd()) { repo = { cwd: cwd(), repo: false, busy: false }; api("repo?cwd=" + encodeURIComponent(cwd())).then((r) => { if (repo.cwd === cwd()) { repo = { cwd: cwd(), ...r }; paintComposer(); } }).catch(() => {}); }
   const iso = willIsolate(ts);
   $("isoChip").style.display = !inChat && repo.repo && !terminal ? "inline-flex" : "none";
@@ -1891,7 +1891,7 @@ $("send").onclick = async () => {
     const m = await api("missions", "POST", { prompt: text, cwd: cwd(), targets: ts });
     supervisor = false; clear(); await refresh(); return go({ type: "mission", id: m.id });
   }
-  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: ts.length === 1 && !terminal ? attached : [], model: curChoice().model || null, effort: curChoice().effort || null });
+  const r = await api("chat", "POST", { prompt: text, targets: ts, cwd: cwd(), brain: useBrain, mode, terminal, isolate: willIsolate(ts), attachments: attached, model: curChoice().model || null, effort: curChoice().effort || null });
   isolate = null; repo.cwd = "";
   clear(); await refresh(); go({ type: r.kind, id: r.id });
 };

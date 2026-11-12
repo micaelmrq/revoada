@@ -227,6 +227,20 @@ describe("claude: texto ao vivo, consumo, título e permissão", () => {
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [att] })))).toContain("imagens=1");
     expect(texts(await idle(await chat("claude-padrao", "veja", { attachments: [{ ...att, path: "/etc/passwd" }] })))).toContain("imagens=0");
   }, SLOW);
+
+  test("pedido em paralelo leva o caminho do anexo no texto, e anexo de fora continua recusado", async () => {
+    const up = await fetch(`${ORIGIN}/api/attach`, { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain", "x-name": "ata.txt" }, body: "ata da reunião" });
+    const att = await up.json() as any;
+    const r = await post("chat", { prompt: "resuma a ata", targets: ["claude-padrao", "codex-padrao"], cwd: HOME, brain: false, mode: "read", attachments: [att, { ...att, path: "/etc/passwd" }] });
+    expect(r.kind).toBe("run");
+    const run = (await api(`runs/${r.id}`)).body;
+    expect(run.prompt.startsWith("resuma a ata")).toBe(true);
+    expect(run.prompt).toContain(`- ${att.path}`);
+    expect(run.prompt).not.toContain("/etc/passwd");
+    // sem anexo o pedido segue como foi escrito
+    const limpo = await post("chat", { prompt: "só texto", targets: ["claude-padrao", "codex-padrao"], cwd: HOME, brain: false, mode: "read" });
+    expect((await api(`runs/${limpo.id}`)).body.prompt).toBe("só texto");
+  }, SLOW);
 });
 
 describe("cérebro", () => {
