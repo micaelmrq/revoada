@@ -5,7 +5,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
+import { registroDeMentira } from "../scripts/registro-de-mentira";
+import { nomeDe, pedidoDoRegistro } from "../registro";
+
 const ROOT = join(import.meta.dir, "..");
+const REGISTRO = registroDeMentira();
 const PORT = 4900 + Math.floor(Math.random() * 90);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 // fora de /tmp: o app esconde de propósito o histórico de conversas que rodaram lá (no macOS a
@@ -87,7 +91,7 @@ beforeAll(async () => {
 
   server = Bun.spawn(["bun", "server.ts"], {
     cwd: ROOT, stdout: "ignore", stderr: "inherit",
-    env: { ...process.env, HOME, REVOADA_HOME: join(HOME, ".revoada"), REVOADA_VAULT: VAULT, PORT: String(PORT), PATH: `${join(ROOT, "tests/stubs")}:${process.env.PATH}`, GEMINI_API_KEY: "", OLLAMA_HOST: "http://127.0.0.1:1", TZ: "UTC", REVOADA_ASSETS: "", REVOADA_PROJECTS: "", REVOADA_REMOTE_PORT: "" },
+    env: { ...process.env, HOME, REVOADA_HOME: join(HOME, ".revoada"), REVOADA_VAULT: VAULT, PORT: String(PORT), PATH: `${join(ROOT, "tests/stubs")}:${process.env.PATH}`, GEMINI_API_KEY: "", OLLAMA_HOST: "http://127.0.0.1:1", TZ: "UTC", REVOADA_ASSETS: "", REVOADA_PROJECTS: "", REVOADA_REMOTE_PORT: "", REVOADA_REGISTRY: REGISTRO.url },
   });
   await until(async () => (await fetch(`${ORIGIN}/api/dirs`).then((r) => r.ok).catch(() => false)));
   await get("state?refresh=1");
@@ -96,6 +100,7 @@ beforeAll(async () => {
 afterAll(async () => {
   server?.kill();
   await server?.exited;
+  REGISTRO.stop();
   rmSync(HOME, { recursive: true, force: true });
 });
 
@@ -567,6 +572,146 @@ describe("skills e MCP em todas as contas", () => {
     expect(off.did.removed).toBe(s.accounts.filter((a: any) => a.provider === "codex" && a.isolated).length);
     expect(texts(await idle(await chat(reserva, "sem mcp")))).toContain("mcp=nao");
     expect(existsSync(join(HOME, ".revoada/profiles", reserva, "skills", "propria", "SKILL.md"))).toBe(true);
+  }, SLOW);
+});
+
+describe("instalar e remover apps (servidores MCP) pela rota", () => {
+  const claudeTem = () => JSON.parse(readFileSync(join(HOME, ".claude.json"), "utf8")).mcpServers;
+  const codexTem = () => (Bun.TOML.parse(readFileSync(join(HOME, ".codex/config.toml"), "utf8")) as any).mcp_servers || {};
+  const estado = async (name: string) => (await get("tools/status"))[name] || {};
+
+  test("pedido errado não chega ao CLI: nome, endereço, comando, catálogo e agente são conferidos antes", async () => {
+    const recusa = async (body: unknown) => { const r = await api("tools/install", "POST", body); return [r.status, r.body.error]; };
+    expect(await recusa({ name: "Tem Espaço", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("letras minúsculas")]);
+    expect(await recusa({ name: "--scope", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("letras minúsculas")]);
+    expect(await recusa({ name: "revoada", endereco: "https://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("própria Revoada")]);
+    expect(await recusa({ name: "ok", endereco: "" })).toEqual([400, expect.stringContaining("Escreva o endereço")]);
+    expect(await recusa({ name: "ok", endereco: "http://mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("https://")]);
+    expect(await recusa({ name: "ok", endereco: "file:///etc/passwd" })).toEqual([400, expect.stringContaining("https://")]);
+    expect(await recusa({ name: "ok", endereco: "https://dono:senha@mcp.exemplo.dev" })).toEqual([400, expect.stringContaining("usuário nem senha")]);
+    expect(await recusa({ name: "ok", endereco: "npx 'aspas abertas" })).toEqual([400, expect.stringContaining("aspas sem fechar")]);
+    expect(await recusa({ name: "ok", endereco: "--flag perigosa" })).toEqual([400, expect.stringContaining("nome de um programa")]);
+    expect(await recusa({ app: "nao-esta-no-catalogo" })).toEqual([400, expect.stringContaining("catálogo")]);
+    expect(await recusa({ app: "linear", providers: ["gemini"] })).toEqual([400, expect.stringContaining("Claude, Codex")]);
+    expect(Object.keys(claudeTem())).toEqual(["demo"]); // nada foi instalado
+    expect((await api("tools/remove", "POST", { name: "nao-existe" })).status).toBe(404);
+    expect((await api("tools/login", "POST", { name: "nao-existe" })).status).toBe(404);
+  });
+
+  test("app do catálogo entra pelos dois CLIs, mostra o login que cada um informa, e sai ao remover", async () => {
+    const antes = await get("tools");
+    expect(antes.clis).toEqual({ claude: true, codex: true });
+    expect(antes.catalogo.find((a: any) => a.id === "linear")).toEqual({ id: "linear", nome: "Linear", o_que: expect.any(String), area: "gestao", login: "oauth", onde: "mcp.linear.app", falta: ["claude", "codex"] });
+    expect(antes.catalogo.length).toBeGreaterThanOrEqual(25);
+    expect(antes.areas.map((a: string[]) => a[0])).toEqual(expect.arrayContaining(["tecnologia", "gestao", "design"]));
+    expect(antes.catalogo.every((a: any) => !("url" in a) && !("fonte" in a))).toBe(true);
+    const r = await post("tools/install", { app: "linear" });
+    expect(r.results).toEqual({ claude: { ok: true }, codex: { ok: true } });
+    expect(claudeTem().linear).toEqual({ type: "http", url: "https://mcp.linear.app/mcp" });
+    expect(codexTem().linear).toEqual({ url: "https://mcp.linear.app/mcp" });
+    expect(r.apps.find((a: any) => a.name === "linear")).toEqual({ name: "linear", em: ["claude", "codex"], remoto: true, onde: "mcp.linear.app" });
+    expect(r.catalogo.find((a: any) => a.id === "linear").falta).toEqual([]);
+    expect(JSON.stringify(r)).not.toContain("segredo"); // a chave do servidor "demo" não vai para a tela
+    // recém-instalado: os dois CLIs dizem que falta entrar; o servidor local não tem login
+    expect(await estado("linear")).toEqual({ claude: { estado: "entrar" }, codex: { estado: "entrar" } });
+    expect(await estado("demo")).toEqual({ claude: { estado: "instalado" }, codex: { estado: "instalado" } });
+    // entrar roda o `mcp login` de cada CLI; enquanto ele espera o navegador, o estado é "entrando"
+    await post("tools/login", { name: "linear" });
+    expect((await estado("linear")).claude).toEqual({ estado: "entrando" });
+    await until(async () => { const e = await estado("linear"); return e.claude?.estado === "pronto" && e.codex?.estado === "pronto"; });
+    // instalar de novo: o nome já existe
+    const de_novo = await api("tools/install", "POST", { app: "linear" });
+    expect([de_novo.status, de_novo.body.code, de_novo.body.error]).toEqual([502, "cli_falhou", "O Claude já tem um app com esse nome. O Codex já tem um app com esse nome."]);
+    const fora = await post("tools/remove", { name: "linear" });
+    expect(fora.results).toEqual({ claude: { ok: true }, codex: { ok: true } });
+    expect([claudeTem().linear, codexTem().linear, fora.mcp.claude.includes("linear")]).toEqual([undefined, undefined, false]);
+    expect(await estado("linear")).toEqual({});
+  }, SLOW);
+
+  test("endereço colado e comando: vão como lista de argumentos, só no agente escolhido, e chegam às outras contas", async () => {
+    const r = await post("tools/install", { name: "interno", endereco: "https://mcp.exemplo.dev/v1?x=1;rm%20-rf", providers: ["codex"] });
+    expect(r.results).toEqual({ codex: { ok: true } });
+    expect([codexTem().interno.url, claudeTem().interno]).toEqual(["https://mcp.exemplo.dev/v1?x=1;rm%20-rf", undefined]);
+    const c = await post("tools/install", { name: "local_1", endereco: `npx -y "pacote com espaço" --raiz '$HOME; echo oi'`, providers: ["claude"] });
+    expect(c.results).toEqual({ claude: { ok: true } });
+    expect(claudeTem().local_1).toEqual({ type: "stdio", command: "npx", args: ["-y", "pacote com espaço", "--raiz", "$HOME; echo oi"] });
+    // com "Usar nas outras contas" ligado, o app novo vai junto na conversa da conta isolada
+    await post("tools", { on: true });
+    const reserva = (await get("state")).accounts.find((a: any) => a.label === "reserva").id;
+    expect(texts(await idle(await chat(reserva, "com o app novo")))).toContain('mcp_servers.interno={ url = "https://mcp.exemplo.dev/v1?x=1;rm%20-rf" }');
+    await post("tools", { on: false });
+    await post("tools/remove", { name: "interno" });
+    await post("tools/remove", { name: "local_1" });
+    expect([codexTem().interno, claudeTem().local_1]).toEqual([undefined, undefined]);
+  }, SLOW);
+
+  test("erro do CLI volta em frase; se um agente instala e o outro não, a resposta diz qual", async () => {
+    const r = await api("tools/install", "POST", { name: "falha-x", endereco: "https://mcp.exemplo.dev" });
+    expect([r.status, r.body.code]).toEqual([502, "cli_falhou"]);
+    expect(r.body.error).toBe("O Claude não conseguiu instalar falha-x: could not reach the server for falha-x O Codex não conseguiu instalar falha-x: could not reach the server for falha-x");
+    await post("tools/install", { name: "meio", endereco: "https://mcp.exemplo.dev", providers: ["claude"] });
+    const meio = await post("tools/install", { name: "meio", endereco: "https://mcp.exemplo.dev" });
+    expect(meio.results).toEqual({ claude: { ok: false, erro: "O Claude já tem um app com esse nome." }, codex: { ok: true } });
+    await post("tools/remove", { name: "meio" });
+  }, SLOW);
+
+  test("app que pede chave: sem chave não instala; com chave entra só no Claude, e a chave não volta para a tela", async () => {
+    expect((await get("tools")).catalogo.find((a: any) => a.id === "github")).toMatchObject({ login: "token", falta: ["claude"] });
+    const sem = await api("tools/install", "POST", { app: "github" });
+    expect([sem.status, sem.body.error]).toEqual([400, "Cole a chave de acesso do GitHub para instalar."]);
+    expect((await api("tools/install", "POST", { app: "github", chave: "com espaço dentro" })).body.error).toContain("parece inválida");
+    const so_codex = await api("tools/install", "POST", { app: "github", chave: "ghp_chave_de_teste_123", providers: ["codex"] });
+    expect([so_codex.status, so_codex.body.error]).toEqual([502, "Este app pede uma chave, e por aqui ela só pode ser guardada no Claude."]);
+    const r = await post("tools/install", { app: "github", chave: "ghp_chave_de_teste_123" });
+    expect(r.results).toEqual({ claude: { ok: true } });
+    expect(claudeTem().github).toEqual({ type: "http", url: "https://api.githubcopilot.com/mcp/", headers: { Authorization: "Bearer ghp_chave_de_teste_123" } });
+    expect(codexTem().github).toBeUndefined();
+    expect(JSON.stringify([r, await get("tools"), await get("tools/status")])).not.toContain("ghp_chave");
+    await post("tools/remove", { name: "github" });
+  }, SLOW);
+
+  test("busca no registro público: só volta o que instala sem chave nem configuração, e instala pelo endereço que o registro deu", async () => {
+    expect(await get("tools/busca?q=p")).toEqual({ achados: [], fora: 0 }); // uma letra não consulta
+    const b = await get("tools/busca?q=planilhas");
+    expect(b.achados).toEqual([
+      { registro: "dev.exemplo/planilhas", name: "planilhas", nome: "Planilhas Exemplo", o_que: "Lê e escreve planilhas.", onde: "mcp.exemplo.dev", remoto: true },
+      { registro: "io.github.fulano/planilhas-local", name: "planilhas-local", nome: "io.github.fulano/planilhas-local", o_que: "Planilhas do disco.", onde: "npx @fulano/planilhas-mcp", remoto: false },
+    ]);
+    expect(b.fora).toBe(3); // pede chave, pede variável, e sem https
+    const r = await post("tools/install", { registro: "dev.exemplo/planilhas", providers: ["codex"] });
+    expect([r.name, r.results, codexTem().planilhas]).toEqual(["planilhas", { codex: { ok: true } }, { url: "https://mcp.exemplo.dev/planilhas" }]);
+    const l = await post("tools/install", { registro: "io.github.fulano/planilhas-local", providers: ["claude"] });
+    expect([l.name, claudeTem()["planilhas-local"]]).toEqual(["planilhas-local", { type: "stdio", command: "npx", args: ["-y", "@fulano/planilhas-mcp@0.3.1"] }]);
+    // o que ficou de fora da busca também não instala pela rota, nem o que a tela inventar
+    for (const registro of ["com.cofre/planilhas-com-chave", "net.inseguro/planilhas-http", "nao.existe/nada"]) {
+      const n = await api("tools/install", "POST", { registro });
+      expect([n.status, n.body.error]).toEqual([400, "Não achei mais esse app no registro público. Busque de novo."]);
+    }
+    const cai = await api("tools/busca?q=cai");
+    expect([cai.status, cai.body.code]).toEqual([502, "registro_fora"]);
+    await post("tools/remove", { name: "planilhas" });
+    await post("tools/remove", { name: "planilhas-local" });
+  }, SLOW);
+
+  test("o nome que o app ganha sai do nome no registro, e entrada estranha não vira pedido", () => {
+    expect(["com.cloudflare.mcp/mcp", "io.github.YawLabs/postgres-mcp", "ai.waystation/postgres", "com.x/Server", "a/--scope user"].map(nomeDe)).toEqual(["cloudflare-mcp", "postgres-mcp", "postgres", "x-server", "scope-user"]);
+    const remoto = (url: string, extra = {}) => pedidoDoRegistro({ server: { name: "a.b/c", remotes: [{ type: "streamable-http", url, ...extra }] } });
+    expect(remoto("https://ok.dev/mcp")?.pedido).toEqual({ name: "c", url: "https://ok.dev/mcp" });
+    expect([remoto("https://u:s@ok.dev/mcp"), remoto("https://ok.dev/{tenant}/mcp"), remoto("javascript:alert(1)"), remoto("https://um-tunel.trycloudflare.com/mcp"), pedidoDoRegistro({ server: { name: "a.b/revoada", remotes: [{ type: "streamable-http", url: "https://ok.dev" }] } }), pedidoDoRegistro(null)]).toEqual([null, null, null, null, null, null]);
+    const pacote = (identifier: string, version = "1.0.0") => pedidoDoRegistro({ server: { name: "a.b/c", packages: [{ registryType: "npm", identifier, version, transport: { type: "stdio" } }] } });
+    expect([pacote("ok-mcp")?.pedido.comando, pacote("ok; rm -rf ~"), pacote("--yes"), pacote("ok", "1.0.0 --evil")]).toEqual([["npx", "-y", "ok-mcp@1.0.0"], null, null, null]);
+  });
+
+  test("Codex que já abre o login ao instalar: a rota responde logo e o estado acompanha até a volta do navegador", async () => {
+    const t0 = Date.now();
+    const r = await post("tools/install", { name: "com-login", endereco: "https://espera.exemplo.dev/mcp", providers: ["codex"] });
+    expect(r.results).toEqual({ codex: { ok: true, login: true } });
+    expect(Date.now() - t0).toBeLessThan(10_000);
+    expect((await estado("com-login")).codex).toEqual({ estado: "entrando" });
+    writeFileSync(join(HOME, ".volta-do-login"), "");
+    await until(async () => (await estado("com-login")).codex?.estado === "pronto");
+    rmSync(join(HOME, ".volta-do-login"));
+    await post("tools/remove", { name: "com-login" });
   }, SLOW);
 });
 

@@ -3,6 +3,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { registroDeMentira } from "../scripts/registro-de-mentira";
 
 const ROOT = join(import.meta.dir, "..");
 
@@ -32,9 +33,10 @@ export async function sobe(port: number = freePort()) {
   git("add", ".");
   git("commit", "-qm", "inicial");
 
+  const registro = registroDeMentira(); // a busca de apps não sai para a internet nos testes
   const server = Bun.spawn(["bun", "server.ts"], {
     cwd: ROOT, stdout: "ignore", stderr: "inherit",
-    env: { ...process.env, HOME: home, REVOADA_HOME: join(home, ".revoada"), REVOADA_VAULT: join(home, "cofre"), PORT: String(port), PATH: `${join(ROOT, "tests/stubs")}:${process.env.PATH}`, GEMINI_API_KEY: "", OLLAMA_HOST: "http://127.0.0.1:1", REVOADA_ASSETS: "", REVOADA_PROJECTS: "", REVOADA_REMOTE_PORT: "" },
+    env: { ...process.env, HOME: home, REVOADA_HOME: join(home, ".revoada"), REVOADA_VAULT: join(home, "cofre"), PORT: String(port), PATH: `${join(ROOT, "tests/stubs")}:${process.env.PATH}`, GEMINI_API_KEY: "", OLLAMA_HOST: "http://127.0.0.1:1", REVOADA_ASSETS: "", REVOADA_PROJECTS: "", REVOADA_REMOTE_PORT: "", REVOADA_REGISTRY: registro.url },
   });
   async function api(path: string, method = "GET", body?: unknown) {
     const r = await fetch(`${origin}/api/${path}`, { method, headers: { origin, ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
@@ -52,5 +54,5 @@ export async function sobe(port: number = freePort()) {
   await api("settings", "POST", { onboarded: true });
   const chat = async (target: string, prompt: string, extra: Record<string, unknown> = {}) => (await api("chat", "POST", { prompt, targets: [target], cwd: home, brain: false, mode: "edit", ...extra })).id as string;
   const idle = (id: string) => until(async () => { const c = await api(`convos/${id}`); return !c.working && c; });
-  return { home, repo, origin, api, until, chat, idle, async stop() { server.kill(); await server.exited; rmSync(home, { recursive: true, force: true }); } };
+  return { home, repo, origin, api, until, chat, idle, async stop() { server.kill(); await server.exited; registro.stop(); rmSync(home, { recursive: true, force: true }); } };
 }

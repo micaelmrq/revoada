@@ -5,6 +5,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { CENAS, PADRAO, PLANO, REVISAO } from "./demo-cenas";
+import { mcpDeMentira } from "./mcp-de-mentira";
 
 const [quem, ...a] = process.argv.slice(2);
 const out = (o: unknown) => console.log(JSON.stringify(o));
@@ -36,6 +37,9 @@ function edita(caminho: string, novo?: boolean) {
     novo ? writeFileSync(caminho, linha) : appendFileSync(caminho, linha);
   } catch {}
 }
+
+// instalar, remover e entrar em app pela janela de Apps conectados
+if ((quem === "claude" || quem === "codex") && a[0] === "mcp") await mcpDeMentira(quem, a);
 
 if (quem === "claude") {
   const padrao = !process.env.CLAUDE_CONFIG_DIR;
