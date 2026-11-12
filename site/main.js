@@ -47,17 +47,13 @@
   const monta = () => {
     const janela = document.querySelector('[data-palco]');
     if (!perto || !janela || janela.querySelector('iframe')) return;
-    const telas = janela.querySelector('.passeio-telas'), nav = janela.parentNode.querySelector('.passeio-nav');
+    const telas = janela.querySelector('.passeio-telas');
     pronto = false;
     quadro = document.createElement('iframe');
     quadro.title = 'Demonstração do Revoada, com agentes de mentira e dados de exemplo';
     quadro.src = 'demo/#parado';
     telas.append(quadro);
     mede.disconnect(); mede.observe(telas);
-    const nota = document.createElement('small'); nota.className = 'passeio-demo'; nota.hidden = true;
-    nota.innerHTML = 'Demonstração com agentes de mentira. Pode mexer. <button type="button">Ver de novo</button>';
-    nota.querySelector('button').addEventListener('click', toca);
-    nav.append(nota);
   };
   addEventListener('message', (e) => {
     if (e.origin !== location.origin || !quadro || e.source !== quadro.contentWindow || !e.data || typeof e.data !== 'object') return;
@@ -65,11 +61,10 @@
       pronto = true;
       const janela = quadro.closest('[data-palco]');
       janela.classList.add('viva');
-      janela.parentNode.querySelector('.passeio-demo').hidden = false;
       toca();
     }
   });
-  // a página só manda cena quando a rolagem troca de ideia: se o visitante mexeu no app, ele fica como está até lá (ou até o Ver de novo)
+  // a página só manda cena quando a rolagem troca de ideia: se o visitante mexeu no app, ele fica como está até lá
   document.addEventListener('revoada:cena', (e) => { cena = e.detail.cena; monta(); toca(); });
   // a capa pinta primeiro: o iframe só entra na fila depois de a página carregar, a capa aparecer na tela e o navegador ficar ocioso, e com o passeio perto da tela
   const vigia = () => new IntersectionObserver((es, o) => { if (!es.some((x) => x.isIntersecting)) return; o.disconnect(); perto = true; monta(); }, { rootMargin: '60% 0px' }).observe(secao);
